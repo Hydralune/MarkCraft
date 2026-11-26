@@ -1,4 +1,6 @@
 import { installEditorContext } from "./editor-context.js";
+import { installParagraphTools } from "./paragraph-tools.js";
+import { paragraphs, setParagraphs, folds, foldDecorations, toggleFold, clearFolds } from "./paragraph-document.js";
 import { fitEditorWidth } from "./fit-width.js";
 import {
   flowQuoteParagraph,
@@ -501,10 +503,10 @@ function decorations(s) {
       }).range(a),
     );
   }
-  const decorations = Decoration.set(ds, true);
+  const {decorations, wrappers} = foldDecorations(s, Decoration.set(ds, true), BlockWrapper.set(wraps, true));
   return {
     decorations,
-    wrappers: BlockWrapper.set(wraps, true),
+    wrappers,
     atomic: decorations.update({
       filter: (a, b, d) =>
         a < b && d.isReplace && (!d.spec.block || d.spec.table),
@@ -516,12 +518,12 @@ const liveField = StateField.define({
   update(v, tr) {
     const rangeDrag = tr.isUserEvent("select.drag") ||
       (tr.selection && !tr.selection.main.empty && tr.isUserEvent("select.pointer"));
-    if ((rangeDrag || (tr.selection && !tr.selection.main.empty)) && !tr.docChanged && !tr.effects.length) return v;
+    if ((rangeDrag || (tr.selection && !tr.selection.main.empty)) && !tr.docChanged && !tr.effects.length && tr.state.field(folds) === tr.startState.field(folds)) return v;
     return tr.docChanged ||
       tr.selection ||
       syntaxTree(tr.startState) !== syntaxTree(tr.state) ||
       searchPanelOpen(tr.startState) !== searchPanelOpen(tr.state) ||
-      tr.effects.some((e) => e.is(setBlocks) || e.is(setSource))
+      tr.effects.some((e) => e.is(setBlocks) || e.is(setSource) || e.is(toggleFold) || e.is(clearFolds))
       ? decorations(tr.state)
       : v;
   },
@@ -575,10 +577,12 @@ function pressEnter(view) {
   return true;
 }
 export function createWriter(parent, onChange, onSelection, onShortcut, closeMenus, notify) {
-  let view, closeContext;
+  let view, closeContext, paragraphTools;
   const ext = [
     rawField,
     blockField,
+    paragraphs,
+    folds,
     inlineField,
     liveField,
     EditorState.allowMultipleSelections.of(true),
@@ -647,6 +651,7 @@ export function createWriter(parent, onChange, onSelection, onShortcut, closeMen
       },
     }),
     EditorView.updateListener.of((u) => {
+      paragraphTools?.update(u);
       if (u.docChanged) {
         closeContext?.();
         onChange(u.state.doc.toString(), u);
@@ -656,6 +661,7 @@ export function createWriter(parent, onChange, onSelection, onShortcut, closeMen
     }),
   ];
   function reset(text, blocks) {
+    paragraphTools?.reset();
     closeContext?.();
     leaveCell();
     resetImageSizes();
@@ -669,9 +675,10 @@ export function createWriter(parent, onChange, onSelection, onShortcut, closeMen
     } else {
       view = new EditorView({ state, parent });
       closeContext = installEditorContext(view, blockField, onShortcut, closeMenus, notify);
+      paragraphTools = installParagraphTools(view, rawField, leaveCell, notify);
     }
     view.dispatch({
-      effects: setBlocks.of(editableBlocks(view.state, blocks)),
+      effects: [setBlocks.of(editableBlocks(view.state, blocks)), setParagraphs.of(blocks)],
     });
     view.scrollDOM.scrollTop = 0;
     view.focus();
@@ -792,7 +799,7 @@ export function createWriter(parent, onChange, onSelection, onShortcut, closeMen
     },
     setBlocks: (blocks) => {
       const editable = editableBlocks(view.state, blocks);
-      view.dispatch({ effects: setBlocks.of(editable) });
+      view.dispatch({ effects: [setBlocks.of(editable), setParagraphs.of(blocks)] });
       refreshCellObjects(view, editable);
     },
     raw: (source) => {
@@ -816,7 +823,7 @@ export function createWriter(parent, onChange, onSelection, onShortcut, closeMen
         ).find((e) => view.posAtDOM(e) === table.start);
         if (el && resumeCell(view, el, table, r.head)) return;
         view.dispatch({ selection: { anchor: r.head } });
-      } else view.dispatch({ effects: setSource.of(source) });
+      } else view.dispatch({ effects: [setSource.of(source), clearFolds.of(null)] });
       view.focus();
     },
     reload(text, blocks) {
@@ -834,9 +841,10 @@ export function createWriter(parent, onChange, onSelection, onShortcut, closeMen
         leaveCell();
         view.dispatch({changes:change,selection,effects:snapshot,annotations:Transaction.addToHistory.of(false)});
       }
-      view.dispatch({effects:setBlocks.of(editableBlocks(view.state,blocks))});
+      view.dispatch({effects:[setBlocks.of(editableBlocks(view.state,blocks)),setParagraphs.of(blocks)]});
     },
     select,
+    paragraphTools: (multiple) => paragraphTools.open(multiple),
     replace,
     format,
     undo: () => undo(view),

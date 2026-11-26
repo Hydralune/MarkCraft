@@ -293,6 +293,7 @@ function setTheme(msg) {
   }
 }
 function setDoc(msg) {
+  if ($("pop").open && $("pop").dataset.kind === "word") $("pop").close();
   dirtySince = 0;
   collectRevision = null;
   diskUnavailable = false;
@@ -472,6 +473,7 @@ const fileItems = () => [
   item("草稿箱…", "drafts"),
   sep,
   item("导出 PDF…", "exportPdf", "Ctrl Shift E"),
+  item("导出 Word…", "docx"),
   item("更多导出格式", "exports", "›"),
   item("导入文档…", "import"),
   item("打印…", "print", "Ctrl Alt P"),
@@ -498,6 +500,9 @@ const menus = {
     item("文档统计", "stats"),
   ],
   段落: () => [
+    item("段落操作…", "paragraphTools"),
+    item("多选段落…", "paragraphSelect"),
+    sep,
     item("正文", "paragraph", "Ctrl 0"),
     ...Array.from({ length: 6 }, (_, i) =>
       item(i + 1 + " 级标题", "h" + (i + 1), "Ctrl " + (i + 1)),
@@ -552,9 +557,7 @@ const menus = {
     item("重新载入主题", "themes"),
   ],
   exports: () => [
-    item("PDF 文档…", "exportPdf"),
     item("HTML 网页…", "exportHtml"),
-    item("Word 文档…", "docx"),
     item("EPUB 电子书…", "epub"),
     item("OpenDocument 文档…", "odt"),
     item("RTF 富文本…", "rtf"),
@@ -634,6 +637,23 @@ function modButton(parent, text, fn, primary = false) {
   b.onclick = fn;
   parent.append(b);
   return b;
+}
+function showWordWarnings(msg) {
+  const dialog = $("pop");
+  if (dialog.open) {
+    dialog.addEventListener("close", () => queueMicrotask(() => showWordWarnings(msg)), { once: true });
+    return;
+  }
+  modal("Word 导出提示", (body, actions) => {
+    body.append(node("p", msg.message));
+    if (/Could not fetch resource/i.test(msg.warnings)) {
+      body.append(node("p", "部分图片未能嵌入。请检查下列路径或网址，修正后重新导出。"));
+    }
+    const detail = node("p", msg.warnings);
+    detail.className = "question-detail export-detail";
+    body.append(detail);
+    modButton(actions, "知道了", () => dialog.close(), true);
+  });
 }
 function answerQuestion(choice) {
   const id = questionId;
@@ -947,6 +967,10 @@ function exportDoc(format) {
     notice("正在导出，请稍候。");
     return;
   }
+  if (format === "docx") {
+    wordStudio.open();
+    return;
+  }
   setExport(true);
   formatJob = format;
   if (["exportHtml", "exportPdf", "print"].includes(format)) {
@@ -980,6 +1004,11 @@ function act(cmd) {
     return true;
   }
   closeMenu();
+  if (cmd === "paragraphTools" || cmd === "paragraphSelect") {
+    if (doc.source) notice("切换到正文后可使用段落操作");
+    else writer.paragraphTools(cmd === "paragraphSelect");
+    return true;
+  }
   if (cmd.startsWith("theme:")) {
     post("theme", { arg: cmd.slice(6) });
     return true;
@@ -1202,6 +1231,11 @@ window.pickReplacementImage = (id) => post("replaceImageFile", { rev: id });
 window.craftReceive = (msg) => {
   if (msg.blocks) prepareBlocks(msg.blocks);
   switch (msg.kind) {
+    case "wordSource":
+    case "wordPage":
+    case "wordSaved":
+      wordStudio.receive(msg);
+      break;
     case "activatedFile":
       pendingLocation = null;
       break;
@@ -1295,7 +1329,8 @@ window.craftReceive = (msg) => {
     case "exportDone":
     case "error":
       setExport(false);
-      notice(msg.message);
+      if (msg.warnings) showWordWarnings(msg);
+      else notice(msg.message);
       break;
     case "notice":
       notice(msg.message);
@@ -1391,5 +1426,6 @@ document.addEventListener(
   true,
 );
 /* PREFERENCES */
+/* WORD_STUDIO */
 writer = MarkWriter.createWriter($("write"), change, cursor, act, closeMenu, notice);
 post("ready");

@@ -9,6 +9,7 @@ mod markdown;
 mod project_search;
 mod saving;
 mod storage;
+mod word_export;
 use saving::{Next, Pending, Save};
 
 use rfd::{FileDialog, MessageDialog, MessageLevel};
@@ -39,7 +40,7 @@ enum Input {
     Drop(PathBuf),
     GoToLine(u32),
     Reply(serde_json::Value),
-    Exported(Result<String, String>),
+    Exported(Result<(String, String), String>),
 }
 
 #[derive(Deserialize)]
@@ -90,6 +91,7 @@ struct App {
     workspace: Option<PathBuf>,
     proxy: Option<tao::event_loop::EventLoopProxy<Input>>,
     exporting: bool,
+    word_studio: Option<word_export::Studio>,
     search_serial: std::sync::Arc<std::sync::atomic::AtomicU64>,
 }
 impl App {
@@ -116,6 +118,7 @@ impl App {
         ));
     }
     fn document(&mut self, win: &Window, web: &WebView) {
+        self.word_studio = None;
         file_window::register(
             win,
             &self.data,
@@ -483,7 +486,85 @@ impl App {
                     return self.leave(Next::Import(input), &text, automatic, win, web);
                 }
             }
-            "exportPdf" | "exportHtml" | "docx" | "epub" | "odt" | "rtf" | "latex" => {
+            "wordBegin" => {
+                let proxy = self.proxy.as_ref().unwrap().clone();
+                let blocks = markdown::blocks(&text)
+                    .into_iter()
+                    .take(48)
+                    .collect::<Vec<_>>();
+                let studio = word_export::Studio::new(
+                    rev,
+                    epoch,
+                    text,
+                    self.doc
+                        .path
+                        .as_deref()
+                        .and_then(Path::parent)
+                        .map(Path::to_owned),
+                    move |msg| {
+                        let _ = proxy.send_event(Input::Reply(msg));
+                    },
+                );
+                match studio {
+                    Ok(studio) => self.word_studio = Some(studio),
+                    Err(e) => {
+                        send(
+                            web,
+                            json!({"kind":"wordPage","studio":rev,"rev":0,"error":format!("无法准备导出预览。{e}")}),
+                        );
+                        return Ok(false);
+                    }
+                }
+                send(
+                    web,
+                    json!({"kind":"wordSource","studio":rev,"blocks":blocks,"personal":extras::personal_word_template().is_some()}),
+                );
+            }
+            "wordLayout" => {
+                if let Some(studio) = &self.word_studio {
+                    if let Err(err) = studio.layout(rev, &arg) {
+                        send(
+                            web,
+                            json!({"kind":"wordPage","studio":studio.id,"rev":rev,"error":err.to_string()}),
+                        );
+                    }
+                }
+            }
+            "wordClose" => {
+                if self.word_studio.as_ref().is_some_and(|s| s.id == rev) {
+                    self.word_studio = None;
+                }
+            }
+            "wordSave" => {
+                if let Some(studio) = &self.word_studio {
+                    let Some(path) = extras::output(win, self.doc.path.as_deref(), "docx") else {
+                        send(
+                            web,
+                            json!({"kind":"wordSaved","studio":studio.id,"cancelled":true}),
+                        );
+                        return Ok(false);
+                    };
+                    let result = if path
+                        .extension()
+                        .and_then(|s| s.to_str())
+                        .is_some_and(|e| e.eq_ignore_ascii_case("docx"))
+                    {
+                        studio.save(rev, &path)
+                    } else {
+                        Err(io::Error::other("请使用 .docx 文件扩展名。"))
+                    };
+                    let msg = match result {
+                        Ok(warnings) => {
+                            json!({"kind":"wordSaved","studio":studio.id,"message":format!("已导出 {}",path.display()),"warnings":warnings})
+                        }
+                        Err(err) => {
+                            json!({"kind":"wordSaved","studio":studio.id,"error":err.to_string()})
+                        }
+                    };
+                    send(web, msg);
+                }
+            }
+            "exportPdf" | "exportHtml" | "epub" | "odt" | "rtf" | "latex" => {
                 if self.exporting {
                     return Ok(false);
                 }
@@ -507,7 +588,8 @@ impl App {
                 let proxy = self.proxy.as_ref().unwrap().clone();
                 if action == "exportPdf" {
                     extras::pdf(web, path, &arg, move |result| {
-                        let _ = proxy.send_event(Input::Exported(result));
+                        let _ = proxy
+                            .send_event(Input::Exported(result.map(|path| (path, String::new()))));
                     })?;
                     self.exporting = true;
                 } else if action == "exportHtml" {
@@ -525,8 +607,8 @@ impl App {
                         .and_then(Path::parent)
                         .map(Path::to_path_buf);
                     std::thread::spawn(move || {
-                        let result = extras::convert(&text, dir.as_deref(), &action, &path)
-                            .map(|_| path.display().to_string())
+                        let result = extras::convert(&text, dir.as_deref(), &action, &path, None)
+                            .map(|warnings| (path.display().to_string(), warnings))
                             .map_err(|e| e.to_string());
                         let _ = proxy.send_event(Input::Exported(result));
                     });
@@ -602,7 +684,9 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         .replace("/* APP_STYLE */", include_str!("../ui/style.css"))
         .replace("/* ENHANCE_SCRIPT */", include_str!("../ui/enhance.js"))
         .replace("/* APP_SCRIPT */", include_str!("../ui/app.js"))
-        .replace("/* PREFERENCES */", include_str!("../ui/preferences.js"));
+        .replace("/* PREFERENCES */", include_str!("../ui/preferences.js"))
+        .replace("/* WORD_STUDIO */", include_str!("../ui/word-studio.js"))
+        .replace("/* WORD_STYLE */", include_str!("../ui/word-studio.css"));
     let web = WebViewBuilder::new_with_web_context(&mut context)
         .with_url("craftui://localhost/index.html")
         .with_browser_accelerator_keys(false)
@@ -684,9 +768,9 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             Event::UserEvent(Input::Exported(result)) => {
                 app.exporting = false;
                 match result {
-                    Ok(path) => send(
+                    Ok((path, warnings)) => send(
                         &web,
-                        json!({"kind":"exportDone","message":format!("已导出 {path}")}),
+                        json!({"kind":"exportDone","message":format!("已导出 {path}"),"warnings":warnings}),
                     ),
                     Err(e) => send(&web, json!({"kind":"error","message":e})),
                 }

@@ -1,6 +1,7 @@
 * {
   box-sizing: border-box;
 }
+
 [hidden] {
   display: none !important;
 }
@@ -792,6 +793,9 @@ body.night #pop::backdrop {
   line-height: 1.65;
   overflow-wrap: anywhere;
 }
+#popBody .export-detail {
+  white-space: pre-wrap;
+}
 #popActions {
   display: flex;
   flex: none;
@@ -1210,9 +1214,6 @@ body.exporting #bar {
 
 #write .editing-cell {
   cursor: text;
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-  background-color: color-mix(in srgb, var(--accent) 7%, var(--paper));
 }
 #write .editing-cell .cm-editor {
   display: block;
@@ -1259,9 +1260,6 @@ body.exporting #bar {
   color: var(--surface) !important;
 }
 @media (forced-colors: active) {
-  #write .editing-cell {
-    outline-color: Highlight;
-  }
   #write .editing-cell .cm-content,
   #write .editing-cell .cm-line,
   #write .editing-cell .cm-line * {
@@ -2139,3 +2137,80 @@ body.night { --text-selection: #455567; }
 @media (any-pointer: coarse) {
   .code-toolbar button, .language-options [role="option"] { min-height: 36px; }
 }
+
+/* The paragraph controls live outside the editable DOM. Selection and hover
+   only paint an overlay, leaving the writing column and its wrapping intact. */
+#write { position:relative; }
+.paragraph-layer {
+  position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:4;
+  color:var(--fg); font:13px/1.4 "Segoe UI Variable Text","Microsoft YaHei UI",sans-serif;
+}
+.paragraph-handle, .paragraph-menu, .paragraph-dock, .paragraph-row button { pointer-events:auto; }
+.paragraph-handle {
+  position:absolute; display:flex; align-items:center; gap:1px; transform:translateY(-50%);
+}
+.paragraph-handle button {
+  display:grid; place-items:center; flex:0 1 22px; min-width:0; height:25px; padding:0;
+  border-radius:6px; color:var(--muted); line-height:1;
+}
+.paragraph-handle .ui-icon { width:16px; max-width:100%; height:16px; }
+.paragraph-handle [data-action="options"] { cursor:grab; }
+#layout .paragraph-handle [data-action="options"] { touch-action:none; }
+.paragraph-handle .dragging { cursor:grabbing; background:var(--selected); }
+.paragraph-handle [data-action="fold"] .ui-icon { transform-origin:center; stroke-width:2; }
+.paragraph-handle [data-action="fold"][aria-expanded="true"] .ui-icon { transform:rotate(90deg); }
+@media (prefers-reduced-motion: no-preference) {
+  .paragraph-handle[data-rotate] [data-action="fold"] .ui-icon { transition:transform 180ms ease-in-out; }
+}
+.paragraph-menu, .paragraph-dock {
+  position:absolute; border:1px solid var(--control-edge); border-radius:11px;
+  background:var(--surface); box-shadow:0 5px 22px #1c274322;
+}
+.paragraph-menu { z-index:3; padding:6px; width:min(224px,calc(100% - 8px)); max-height:calc(100% - 8px); overflow:auto; }
+.paragraph-menu > button { display:block; width:100%; padding:6px 10px; text-align:left; }
+.paragraph-formats { display:grid; grid-template-columns:repeat(4,1fr); gap:2px; padding:1px; }
+.paragraph-formats:has(+button) { margin-bottom:4px; padding-bottom:6px; border-bottom:1px solid var(--edge); }
+.paragraph-formats button { min-height:30px; font-weight:600; }
+.paragraph-formats button[aria-pressed="true"], .paragraph-dock [data-action="done"] { color:var(--ui-accent); background:var(--selected); }
+.paragraph-layer button:disabled { opacity:.38; cursor:default; }
+.paragraph-layer button[data-action="delete"]:enabled { color:#ad4047; }
+.night .paragraph-layer button[data-action="delete"]:enabled { color:#f49696; }
+.paragraph-dock {
+  z-index:2; left:50%; bottom:10px; display:flex; align-items:center; justify-content:center;
+  flex-wrap:wrap; gap:2px; width:max-content; max-width:calc(100% - 14px); padding:5px;
+  visibility:hidden; opacity:0; transform:translate(-50%,9px);
+  transition:opacity 150ms, transform 170ms ease-out, visibility 0s linear 170ms;
+}
+.multi .paragraph-dock { visibility:visible; opacity:1; transform:translate(-50%,0); transition-delay:0s; }
+.paragraph-dock button { padding:6px 9px; }
+.paragraph-count { margin:0 6px; font-variant-numeric:tabular-nums; }
+.paragraph-row { position:absolute; border-radius:6px; transition:background-color 130ms; pointer-events:none; }
+.paragraph-row.picked { background:color-mix(in srgb,var(--accent) 10%,transparent); }
+.paragraph-row button {
+  position:absolute; right:0; width:20px; height:20px; border-radius:50%;
+  display:grid; place-content:center; background:var(--surface); border:1.4px solid var(--control-edge);
+  color:transparent; font-weight:700; transition:color 120ms, background-color 120ms;
+}
+.paragraph-row button::after { content:""; position:absolute; inset:-5px; }
+.paragraph-row.picked button { background:var(--ui-accent); border-color:var(--ui-accent); color:var(--surface); }
+.paragraph-drop { position:absolute; height:2px; background:var(--accent); border-radius:4px; }
+.paragraph-folded { display:inline-block; padding:0 7px; margin-inline:4px; border:1px solid var(--control-edge);
+  border-radius:6px; color:var(--ui-accent); background:var(--soft); font:12px/1.55 "Segoe UI","Microsoft YaHei UI",sans-serif; vertical-align:middle; }
+#write:has(.paragraph-layer.multi) > .cm-editor > .cm-scroller > .cm-content { padding-bottom:80px; }
+@media (prefers-reduced-motion: reduce) {
+  .paragraph-dock, .paragraph-row, .paragraph-row button { transition:none; }
+}
+@media print { .paragraph-layer { display:none; } }
+
+
+.paragraph-ghost {
+  position:absolute; left:0; top:0; max-width:min(260px,80%); padding:5px 10px;
+  overflow:hidden; white-space:nowrap; text-overflow:ellipsis; border:1px solid var(--control-edge);
+  border-radius:7px; background:var(--surface); color:var(--fg); box-shadow:0 3px 12px #19274420;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .paragraph-layer.multi .paragraph-marks { animation:paragraph-appear 150ms ease-out; }
+  .paragraph-menu:not([hidden]) { animation:paragraph-appear 100ms ease-out; }
+  @keyframes paragraph-appear { from { opacity:0; } to { opacity:1; } }
+}
+/* WORD_STYLE */

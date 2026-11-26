@@ -192,12 +192,51 @@ fn pandoc_path() -> PathBuf {
         PathBuf::from("pandoc.exe")
     }
 }
-pub fn convert(text: &str, folder: Option<&Path>, format: &str, dest: &Path) -> io::Result<()> {
+pub fn personal_word_template() -> Option<PathBuf> {
+    std::env::var_os("APPDATA")
+        .map(|dir| {
+            PathBuf::from(dir)
+                .join("MarkCraft")
+                .join("word-reference.docx")
+        })
+        .filter(|path| path.is_file())
+}
+
+fn configure_word(cmd: &mut Command, personal: Option<&Path>) -> io::Result<tempfile::TempDir> {
+    let assets = tempfile::tempdir()?;
+    let filter = assets.path().join("word.lua");
+    fs::write(&filter, include_bytes!("../export/word.lua"))?;
+    let template = match personal {
+        Some(path) => path.to_owned(),
+        None => {
+            let path = assets.path().join("reference.docx");
+            fs::write(&path, include_bytes!("../export/markcraft-word.docx"))?;
+            path
+        }
+    };
+    cmd.arg("--reference-doc")
+        .arg(template)
+        .arg("--lua-filter")
+        .arg(filter);
+    Ok(assets)
+}
+
+pub fn convert(
+    text: &str,
+    folder: Option<&Path>,
+    format: &str,
+    dest: &Path,
+    reference: Option<&Path>,
+) -> io::Result<String> {
     let tmp = tempfile::Builder::new()
         .suffix(&format!(".{format}"))
         .tempfile_in(dest.parent().ok_or_else(|| io::Error::other("目录无效"))?)?
         .into_temp_path();
     let mut cmd = Command::new(pandoc_path());
+    // Keep the embedded profile on disk until Pandoc finishes reading it.
+    let _word_assets = (format == "docx")
+        .then(|| configure_word(&mut cmd, reference))
+        .transpose()?;
     if let Some(dir) = folder {
         cmd.current_dir(dir);
     }
@@ -227,7 +266,12 @@ pub fn convert(text: &str, folder: Option<&Path>, format: &str, dest: &Path) -> 
     writer
         .join()
         .map_err(|_| io::Error::other("传输文稿失败"))??;
-    tmp.persist(dest).map_err(|e| e.error)
+    tmp.persist(dest).map_err(|e| e.error)?;
+    Ok(if format == "docx" {
+        String::from_utf8_lossy(&out.stderr).trim().to_owned()
+    } else {
+        String::new()
+    })
 }
 pub fn import(path: &Path) -> io::Result<String> {
     let result = Command::new(pandoc_path())
