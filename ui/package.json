@@ -1,0 +1,23 @@
+{
+  "name": "markcraft-editor",
+  "version": "0.2.0",
+  "scripts": {
+    "build": "esbuild writer.js --bundle --minify --global-name=MarkWriter --format=iife --legal-comments=linked --outfile=../vendor/writer.bundle.js"
+  },
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "@codemirror/commands": "6.11.2",
+    "@codemirror/lang-markdown": "6.5.2",
+    "@codemirror/language": "6.13.1",
+    "@codemirror/search": "6.7.3",
+    "@codemirror/state": "6.7.6",
+    "@codemirror/view": "6.44.0",
+    "@lezer/markdown": "1.8.2",
+    "linkify-it": "5.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12"
+  },
+  "private": true
+}

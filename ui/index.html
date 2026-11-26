@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-markcraft-ui'; img-src http://craftimg.localhost https: data:; connect-src http://craftimg.localhost; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-src 'none'"
+    />
+    <title>MarkCraft</title>
+    <style>
+      /* APP_STYLE */
+    </style>
+    <style id="documentTheme"></style>
+    <style id="printSettings"></style>
+  </head>
+  <body>
+    <svg
+      class="icon-library"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <symbol id="i-save" viewBox="0 0 20 20">
+        <path
+          d="M4.5 2.8h8.4l3.7 3.7v9a1.7 1.7 0 0 1-1.7 1.7H4.5a1.7 1.7 0 0 1-1.7-1.7V4.5a1.7 1.7 0 0 1 1.7-1.7Z"
+        />
+        <path d="M6.1 2.9v4.4h6.1V3.1M6.2 17v-5.7h7.2V17" />
+      </symbol>
+      <symbol id="i-versions" viewBox="0 0 20 20">
+        <rect x="7" y="6" width="9" height="11" rx="2" />
+        <path
+          d="M11.7 4.1v-.2a1.5 1.5 0 0 0-1.5-1.5H4.8a1.4 1.4 0 0 0-1.4 1.4v8a1.4 1.4 0 0 0 1.4 1.4"
+        />
+        <path d="M10 10h3.3M10 13h2" />
+      </symbol>
+      <symbol id="i-alert" viewBox="0 0 20 20">
+        <path
+          d="m8.7 3.3-6.1 10.6a1.5 1.5 0 0 0 1.3 2.3h12.2a1.5 1.5 0 0 0 1.3-2.3L11.3 3.3a1.5 1.5 0 0 0-2.6 0Z"
+        />
+        <path d="M10 7v3.4m0 2.5v.1" />
+      </symbol>
+      <symbol id="i-panel" viewBox="0 0 20 20">
+        <rect x="2.6" y="3.5" width="14.8" height="13" rx="2.2" />
+        <path d="M7.7 3.8v12.4" />
+      </symbol>
+      <symbol id="i-code" viewBox="0 0 20 20">
+        <path d="m5.8 5.9-4 4.1 4 4.1m8.4-8.2 4 4.1-4 4.1m-3-11-2.4 13.8" />
+      </symbol>
+      <symbol id="i-jump" viewBox="0 0 20 20">
+        <path d="M3 4h8M3 9h6M3 14h5m5-11v11m-4-4 4 4 4-4" />
+      </symbol>
+      <symbol id="i-search" viewBox="0 0 20 20">
+        <circle cx="8.5" cy="8.5" r="5.2" />
+        <path d="m12.5 12.5 4.2 4.2" />
+      </symbol>
+      <symbol id="i-export" viewBox="0 0 20 20">
+        <path
+          d="M10 12.6V2.8m-3.5 3.6L10 2.8l3.5 3.6M4 10.3v4.5a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-4.5"
+        />
+      </symbol>
+      <symbol id="i-close" viewBox="0 0 20 20">
+        <path d="m5.5 5.5 9 9m0-9-9 9" />
+      </symbol>
+      <symbol id="i-paper" viewBox="0 0 20 20">
+        <path
+          d="M5 2.8h6.8l3.7 3.9v9.1a1.5 1.5 0 0 1-1.5 1.5H5.6a1.5 1.5 0 0 1-1.5-1.5V4.3A1.5 1.5 0 0 1 5.6 2.8Z"
+        />
+        <path d="M11.2 3v4.2h4M7 11h5.5" />
+      </symbol>
+      <symbol id="i-folder" viewBox="0 0 20 20">
+        <path
+          d="M2.4 6a1.6 1.6 0 0 1 1.6-1.6h4l1.8 1.9H16A1.6 1.6 0 0 1 17.6 8v6.5A1.6 1.6 0 0 1 16 16H4a1.6 1.6 0 0 1-1.6-1.6Z"
+        />
+      </symbol>
+      <symbol id="i-check" viewBox="0 0 20 20">
+        <circle cx="10" cy="10" r="7.1" />
+        <path d="m6.7 10 2.2 2.2 4.4-4.5" />
+      </symbol>
+      <symbol id="i-draft" viewBox="0 0 20 20">
+        <circle cx="10" cy="10" r="6" />
+        <circle cx="10" cy="10" r="2.2" fill="currentColor" stroke="none" />
+      </symbol>
+      <symbol id="i-words" viewBox="0 0 20 20">
+        <path d="M3.4 5.4h13.2M3.4 10h9.7m-9.7 4.6h6.1" />
+      </symbol>
+      <symbol id="i-chevron" viewBox="0 0 20 20">
+        <path d="m7.7 5.8 4.1 4.2-4.1 4.2" />
+      </symbol>
+      <symbol id="i-settings" viewBox="0 0 20 20"><path d="M3 5h5m4 0h5M3 10h9m4 0h1M3 15h1m4 0h9"/><circle cx="10" cy="5" r="2"/><circle cx="14" cy="10" r="2"/><circle cx="6" cy="15" r="2"/></symbol>
+    </svg>
+    <header class="toolbar">
+      <button
+        class="tool-icon"
+        id="sidebarButton"
+        data-command="toggleSide"
+        title="切换侧栏 (Ctrl + Shift + L)"
+        aria-label="切换侧栏"
+        aria-expanded="false"
+        aria-controls="side"
+      >
+        <svg class="ui-icon" aria-hidden="true"><use href="#i-panel" /></svg>
+      </button>
+      <span class="tool-rule" aria-hidden="true"></span>
+      <nav id="bar" aria-label="主菜单"></nav>
+      <span class="spacer"></span>
+      <button
+        class="tool-icon"
+        data-command="find"
+        title="查找和替换 (Ctrl + F)"
+        aria-label="查找和替换"
+      >
+        <svg class="ui-icon" aria-hidden="true"><use href="#i-search" /></svg>
+      </button>
+      <button
+        class="export-button"
+        data-command="exportPdf"
+        title="导出 PDF (Ctrl + Shift + E)"
+        aria-label="导出 PDF"
+      >
+        <svg class="ui-icon" aria-hidden="true"><use href="#i-export" /></svg
+        ><span>导出 PDF</span>
+      </button>
+    </header>
+    <div id="layout">
+      <aside id="side" hidden>
+        <div class="tabs">
+          <div class="side-switch">
+            <button data-command="outline" id="outlineTab">大纲</button
+            ><button data-command="files" id="filesTab">文件</button>
+          </div>
+          <span class="spacer"></span
+          ><button
+            class="tool-icon small-icon"
+            data-command="hideSide"
+            title="关闭侧栏"
+            aria-label="关闭侧栏"
+          >
+            <svg class="ui-icon" aria-hidden="true">
+              <use href="#i-close" />
+            </svg>
+          </button>
+        </div>
+        <input id="outlineFilter" type="search" placeholder="筛选标题" aria-label="筛选大纲标题" hidden />
+        <div id="outline"></div>
+        <section id="files" hidden>
+          <button class="chooseFolder" data-command="folder">
+            <svg class="ui-icon" aria-hidden="true">
+              <use href="#i-folder" /></svg
+            >打开文件夹…
+          </button>
+          <div id="tree"></div>
+        </section>
+      </aside>
+      <main id="desk" class="docTheme">
+        <div id="write" class="prose"></div>
+      </main>
+    </div>
+    <footer>
+      <button
+        type="button"
+        class="source-toggle"
+        data-command="source"
+        id="sourceToggle"
+        aria-pressed="false"
+        aria-label="打开源码模式"
+        title="源码模式 (Ctrl + /)"
+      >
+        <svg aria-hidden="true" class="ui-icon"><use href="#i-code" /></svg
+        ><span>源码</span>
+      </button>
+      <span class="save-state"
+        ><svg class="ui-icon" aria-hidden="true">
+          <use id="stateIcon" href="#i-paper" /></svg
+        ><span id="status">未命名</span></span
+      >
+      <span class="spacer"></span>
+      <button class="word-count" data-command="stats" title="文档统计">
+        <svg class="ui-icon" aria-hidden="true"><use href="#i-words" /></svg
+        ><span id="count">0 字</span>
+      </button>
+    </footer>
+    <div id="menu" class="command-menu" role="menu" hidden></div>
+    <div id="notice" role="status" hidden></div>
+    <dialog id="pop" aria-labelledby="popTitle">
+      <form id="popForm" method="dialog">
+        <div class="pop-heading">
+          <span class="pop-mark" aria-hidden="true"
+            ><svg class="ui-icon"><use id="popIcon" href="#i-paper" /></svg
+          ></span>
+          <h2 id="popTitle"></h2>
+          <button
+            type="button"
+            id="popClose"
+            aria-label="关闭对话框"
+            title="关闭"
+          >
+            <svg class="ui-icon" aria-hidden="true">
+              <use href="#i-close" />
+            </svg>
+          </button>
+        </div>
+        <div id="popBody"></div>
+        <div id="popActions"></div>
+      </form>
+    </dialog>
+    <div id="printRoot" class="docTheme">
+      <article id="printPage" class="prose"></article>
+    </div>
+    <script nonce="markcraft-ui">
+      /* ENHANCE_SCRIPT */
+    </script>
+    <script
+      nonce="markcraft-ui"
+      src="http://craftui.localhost/highlight.js"
+    ></script>
+    <script
+      nonce="markcraft-ui"
+      src="http://craftui.localhost/writer.js"
+    ></script>
+    <script nonce="markcraft-ui">
+      /* APP_SCRIPT */
+    </script>
+  </body>
+</html>

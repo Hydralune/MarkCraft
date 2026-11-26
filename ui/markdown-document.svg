@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="paper" x2=".6" y2="1">
+      <stop stop-color="#ffffff"/><stop offset="1" stop-color="#e9edfa"/>
+    </linearGradient>
+    <linearGradient id="tab" x2="1" y2=".7">
+      <stop stop-color="#6867d8"/><stop offset="1" stop-color="#43499e"/>
+    </linearGradient>
+  </defs>
+  <path d="M35 3H16a5 5 0 0 0-5 5v47a5 5 0 0 0 5 5h33a5 5 0 0 0 5-5V22Z"
+        fill="#737ca2" opacity=".22" transform="translate(0 1.5)"/>
+  <path d="M36.5 2.5H16A4.5 4.5 0 0 0 11.5 7v48a4.5 4.5 0 0 0 4.5 4.5h33a4.5 4.5 0 0 0 4.5-4.5V19.5Z"
+        fill="url(#paper)" stroke="#8791b6" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M36.5 3v13a4 4 0 0 0 4 4h12.8" fill="#d8ddf7" stroke="#8791b6"
+        stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M20 17h9m-9 9h23" fill="none" stroke="#acb4ce" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M12 48H7.5l4.5 4.5Z" fill="#363b83"/>
+  <rect x="6" y="33" width="43" height="16.5" rx="3" fill="url(#tab)"/>
+  <path d="M14.5 45v-8l5.5 5.5 5.5-5.5v8m11-8v8m-4-4 4 4 4-4"
+        fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

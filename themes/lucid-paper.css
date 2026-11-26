@@ -1,0 +1,318 @@
+/* MarkCraft document theme. Section numbers are presentation only. */
+:scope {
+  --paper: #fff;
+  --print-page: lucid-paper;
+  --ink: #101114;
+  --accent: #486df1;
+  --soft: #f6f8fa;
+  --rule: #e1e4e8;
+  --body-font:
+    "Segoe UI", "Source Han Sans SC", "Microsoft YaHei UI", "Microsoft YaHei",
+    sans-serif;
+  --heading-font: var(--body-font);
+  --mono: "JetBrains Mono", Consolas, "Microsoft YaHei", monospace;
+  --measure: 860px;
+  --size: 16px;
+  --leading: 1.6;
+  --heading-weight: 700;
+}
+.cm-editor .cm-content {
+  max-width: var(--measure);
+  padding: 30px 30px 24px;
+}
+@media screen and (min-width: 1400px) {
+  :scope {
+    --measure: 1024px;
+  }
+}
+@media screen and (min-width: 1800px) {
+  :scope {
+    --measure: 1200px;
+  }
+}
+.md-h1,
+.prose h1 {
+  font-size: 2.25em;
+  line-height: 1.2;
+}
+.md-h2,
+.prose h2 {
+  font-size: 1.75em;
+  line-height: 1.225;
+}
+.md-h3,
+.prose h3 {
+  font-size: 1.5em;
+  line-height: 1.43;
+}
+.md-h4,
+.prose h4 {
+  font-size: 1.25em;
+}
+.md-h5,
+.prose h5,
+.md-h6,
+.prose h6 {
+  font-size: 1em;
+}
+:is(.md-h1, .md-h2, .md-h3, .md-h4),
+.prose :is(h1, h2, h3, h4) {
+  color: #08090b;
+  letter-spacing: -0.64px;
+}
+[data-section]::before {
+  content: attr(data-section) ". ";
+}
+.doc-toc a::before {
+  content: attr(data-index) ". ";
+}
+.cm-editor .cm-line[data-section] {
+  padding-block: 5px;
+}
+.cm-editor .cm-line:first-child[data-section] {
+  padding-top: 12px;
+}
+.prose :is(h1, h2, h3, h4, h5, h6) {
+  margin-block: 1rem;
+}
+.prose p {
+  margin-block: 0.8em;
+}
+.prose blockquote,
+.cm-line.md-quote {
+  border: 1px solid var(--rule);
+  border-left: 4px solid #0078d4;
+  border-radius: 4px;
+  background: #f8f9fa;
+  color: #444;
+  padding: 10px 16px;
+  margin-inline: 0;
+}
+.prose blockquote > :first-child {
+  margin-top: 0;
+}
+.prose blockquote > :last-child {
+  margin-bottom: 0;
+}
+.prose table {
+  width: 100%;
+  font-size: 1em;
+  font-variant-numeric: tabular-nums;
+  border-collapse: collapse;
+}
+.prose :is(td, th) {
+  padding: 6px 13px;
+  border: 1px solid var(--rule);
+}
+.prose th {
+  font-weight: 700;
+  background: #fff;
+}
+.prose tbody tr:nth-child(even) {
+  background: #fff;
+}
+.prose ul,
+.prose ol {
+  padding-left: 30px;
+  margin-block: 0.8em;
+}
+.prose li :is(ul, ol) {
+  margin-block: 0;
+}
+.prose pre {
+  background: #f6f8fa;
+  padding: 10px 16px;
+  line-height: 1.4;
+}
+.prose code,
+.md-inlinecode,
+.md-code-line {
+  font-size: 0.9em;
+}
+.hljs-keyword,
+.hljs-literal {
+  color: #3b78e7;
+}
+.hljs-string {
+  color: green;
+}
+.hljs-number {
+  color: #b4152a;
+}
+.hljs-comment {
+  color: #757584;
+}
+.hljs-attr {
+  color: #9026a3;
+}
+.prose hr {
+  border: 0;
+  height: 2px;
+  background: #efdf84;
+}
+@media print {
+  #printPage,
+  .export-document {
+    font-size: 12.5pt;
+    line-height: 1.55;
+    color: #1a1a1a;
+  }
+  .prose :is(h1, h2, h3, h4) {
+    font-weight: 600;
+    color: #000;
+    margin: 1.5em 0 0.5em;
+    break-after: avoid;
+  }
+  .prose h1 {
+    font-size: 2.2em;
+  }
+  .prose h2 {
+    font-size: 1.65em;
+  }
+  .prose h3 {
+    font-size: 1.3em;
+  }
+  .prose p {
+    margin: 0 0 0.9em;
+  }
+  .prose pre {
+    padding: 8px 12px;
+    font-size: 10.5pt;
+    line-height: 1.4;
+  }
+  .prose pre code {
+    font-size: 1em;
+  }
+  .prose blockquote {
+    break-inside: avoid;
+  }
+  .prose :is(th, td) {
+    border-color: #dfe2e5;
+  }
+  .prose tbody tr:nth-child(even) {
+    background: #f8f8f8;
+  }
+}
+
+.doc-toc {
+  display: block;
+}
+.doc-toc a {
+  display: block;
+  font-size: 0.92em;
+  line-height: 1.55;
+}
+.doc-toc a[data-level="1"] {
+  font-size: 1.4em;
+  font-weight: 600;
+}
+.doc-toc a[data-level="2"] {
+  font-size: 1.08em;
+}
+@media print {
+  .prose .doc-toc {
+    break-inside: avoid;
+    margin-bottom: 2.8em;
+  }
+  .prose li {
+    margin: 0.25em 0;
+  }
+  .prose ul,
+  .prose ol {
+    padding-left: 24px;
+    margin-block: 0.5em;
+  }
+  .prose pre {
+    border: 0;
+    break-inside: avoid;
+  }
+  .prose pre code {
+    white-space: pre-wrap;
+  }
+  .prose .diagram svg {
+    max-width: 100%;
+  }
+  .prose input[type="checkbox"] {
+    accent-color: #486df1;
+  }
+}
+.cm-editor .cm-content > .cm-line {
+  padding-inline: 0;
+}
+.prose li:has(> input[type="checkbox"]:first-child) {
+  list-style: none;
+}
+.prose input[type="checkbox"] {
+  appearance: none;
+  display: inline-grid;
+  place-content: center;
+  width: 1em;
+  height: 1em;
+  margin: 0 0.4em 0 -1.2em;
+  border: 1px solid #75818b;
+  border-radius: 2px;
+  vertical-align: -0.08em;
+}
+.prose input[type="checkbox"]:checked {
+  background: #486df1;
+  border-color: #486df1;
+}
+.prose input[type="checkbox"]:checked::after {
+  content: "";
+  width: 0.48em;
+  height: 0.24em;
+  border: solid white;
+  border-width: 0 0 0.13em 0.13em;
+  transform: translateY(-0.04em) rotate(-45deg);
+}
+.doc-toc a[data-level="2"] {
+  padding-inline-start: 2rem !important;
+}
+.doc-toc a[data-level="3"] {
+  padding-inline-start: 3rem !important;
+}
+.doc-toc a[data-level="4"] {
+  padding-inline-start: 4rem !important;
+}
+@media print {
+  .prose .doc-toc {
+    margin-block: 1.2em 4em;
+  }
+  .prose li {
+    margin-block: 0.87em;
+  }
+  .prose :is(h2, h3, h4) {
+    margin-bottom: 0.66em;
+  }
+  .prose .diagram {
+    margin-bottom: 1.6em;
+  }
+  .prose .footnote-definition {
+    font-size: 0.76em;
+    color: #555;
+  }
+  .prose
+    > div:has(> .footnote-definition):not(:has(+ div > .footnote-definition)) {
+    margin-bottom: 0;
+  }
+}
+
+.footnote-return {
+  margin-inline-start: 0.4em;
+}
+@media print {
+  .prose
+    > div:not(:has(> .footnote-definition))
+    + div:has(> .footnote-definition) {
+    border-top: 1px solid #e6d77c;
+    padding-top: 0.6em;
+  }
+  #printPage > div:has(+ div > .footnote-definition),
+  .export-document > div:has(+ div > .footnote-definition) {
+    break-after: avoid;
+  }
+  #printPage > div:has(+ div > .footnote-definition) > p {
+    orphans: 3;
+    widows: 3;
+  }
+}

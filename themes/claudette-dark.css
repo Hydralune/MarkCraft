@@ -1,0 +1,2 @@
+/* Dark document palette adapted from Claudette, CookPiu, MIT. */
+:scope { color-scheme:dark; --paper:#242421; --ink:#edece5; --accent:#e8a183; --soft:#30302c; --rule:#494943; --body-font:Inter,"Segoe UI","Microsoft YaHei",sans-serif; --heading-font:"Source Serif 4",Charter,Georgia,"Noto Serif SC","SimSun",serif; --mono:"Cascadia Code",Consolas,monospace; --measure:790px; --size:17px; --leading:1.85; --heading-weight:500; }
