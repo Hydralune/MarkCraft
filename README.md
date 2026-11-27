@@ -42,7 +42,7 @@
 
 ![接续对话窗口已选中 Codex，显示可编辑的新对话名称与原工作目录](docs/images/chat-handoff-dialog.png)
 
-如果要回到 Claude Code 本身，在对话上右键选「在 Claude Code 窗口打开」即可。MarkCraft 会进入该会话的工作目录，再执行 `claude --resume <id>`。截图中侧栏的 `source` 是目录简称。当前 `main` 分支会在项目行显示完整路径，右键还可以选「复制工作目录」。
+如果要回到 Claude Code 本身，在对话上右键选「在 Claude Code 窗口打开」即可。MarkCraft 会进入该会话的工作目录，再执行 `claude --resume <id>`。截图中侧栏的 `source` 是目录简称。从 v0.4.1 起，项目行会显示完整路径，右键还可以选「复制工作目录」。
 
 ### 1. 权限可控的本机来源扫描
 
@@ -125,7 +125,7 @@ Codex、Claude Code、Antigravity、DeepSeek Harness 的对话都可以**相互�
 
 ## 开始使用
 
-1. 前往 [Releases](https://github.com/Hydralune/MarkCraft/releases/latest) 下载 `MarkCraft-v0.4.0-windows-x64.zip`，将**整个文件夹**解压到长期使用的路径。
+1. 前往 [Releases](https://github.com/Hydralune/MarkCraft/releases/latest) 下载 `MarkCraft-v0.4.1-windows-x64.zip`，将**整个文件夹**解压到长期使用的路径。
 2. 双击 `MarkCraft.exe` 开始写作，按 `Ctrl + O` 可打开本机的 Markdown 文件。
 3. **（可选）关联 `.md` 文件类型与专用文档图标**：在解压目录的 PowerShell 中运行以下命令，再到资源管理器右键 `.md` 文件 →「打开方式」将 MarkCraft 设为默认即可（只对当前 Windows 用户生效；移动目录后重新执行一次即可刷新路径）：
 
@@ -154,7 +154,7 @@ Codex、Claude Code、Antigravity、DeepSeek Harness 的对话都可以**相互�
 
 MarkCraft 使用 **Rust（`tao` + `wry`）+ 系统 WebView2** 架构，不捆绑整套 Chromium，因此分发体积小、Rust 主进程开销极低：
 
-- **v0.4.0 分发体积**：Windows x64 便携包约 **3.55 MiB**（含主程序、加载器、Harness 接续插件、离线指南、示例与许可），`MarkCraft.exe` 主程序约 **8.97 MiB**。
+- **v0.4.1 分发体积**约为 **3.81 MiB**。Windows x64 便携包内含主程序、加载器、Harness 接续插件、离线指南、示例与许可，解压后的 `MarkCraft.exe` 约 **9.51 MiB**。
 - **v0.2.0 单窗口首页静置内存基准**：
 
 | 测试文稿 | 整个进程树专用工作集（中位数） | 5 次实测范围 | Rust 主进程（中位数） |
