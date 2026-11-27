@@ -1,29 +1,34 @@
 # MarkCraft
 
-**用 Rust 构建的本地优先 Windows Markdown 编辑器与跨智能体对话工作台。**
+**用 Rust 构建的 Windows 本地对话工作台与 Markdown 编辑器，免费开源。**
 
-MarkCraft 把两件高频工作放进同一个本地桌面应用里：**像 Typora 一样打开 `.md` 就在排好版的正文里直接写**，同时把本机 **Codex、Claude Code、Antigravity、DeepSeek Harness** 的历史对话统一管起来——支持原话/Markdown 双视图阅读、全文大纲跳转、多格式导出归档，还能把一场对话连同识别出的项目工作区**直接写成另一款智能体的原生会话继续聊**。免费开源，数据不上传云端。
+把 **Claude Code、Codex、Antigravity、DeepSeek Harness** 的历史对话放进同一个资料库。想换智能体时，把对话拖到目标项目，打开窗口就能接着聊。需要留档时，可以把问答导出为 Markdown、PDF 或 Word。MarkCraft 也能直接打开本机的 `.md` 文件，在排好版的正文里编辑文字、表格和公式。
 
 **[下载 Windows x64 便携版](https://github.com/Hydralune/MarkCraft/releases/latest)** · [示例文稿《散场以后的四班车》](examples/散场以后的四班车.md) · [使用指南](ui/guide.md) · [对话资料库与接续指南](docs/对话资料库.md) · [MIT 许可证](LICENSE)
 
-![编辑器左侧展开章节大纲，正文中嵌有接驳时刻图和发车表](docs/images/editor.png)
+## 跨智能体接续
 
----
+在 Claude Code 里讨论了几十轮，额度用完了，想换 Codex 接着做。打开 MarkCraft，**把旧对话拖到 Codex 的项目目录，在新会话上右键选「在 Codex 窗口打开」**。之前谁提了什么要求、后来改过哪一条，你和 Codex 都可以在原来的问答里找到。整个接续在本机完成，无需先让 Claude 写交接摘要，也省去了在新窗口重新交代前情的一轮。
 
-## 核心定位
+### 同一轮问答，在两个原生客户端里是什么样
 
-MarkCraft 瞄准两个很具体的日常痛点：
+下面是 MarkCraft 开发过程中的一段真实对话。用户要求把 PDF 和 Word 合并到一个「导出」菜单，末尾还补了一句「在文件那里也复用」。左图用 Claude Code 恢复原会话，右图用 Codex 恢复 MarkCraft 创建的副本。两边都能读到这个细节，以及助手从确认需求、检查长对话导出，到最终答复的三条消息。
 
-1. **替代收费桌面 Markdown 编辑器，保留纯粹的本地 `.md` 写作流**
-   打开文件就能在排版好的正文里直接改字、填表格、编辑公式，光标离开行内元素后标记自动收起，所有文件以普通文本保存在自己硬盘上。
-2. **打通多个本地 Coding Agent 之间的上下文断层**
-   写代码时经常需要在多个智能体之间切换——比如在一个工具里讨论完方案、额度用完或卡在某个问题，想切到另一个工具接着改同一份仓库代码。传统的做法是手动总结前情、复制一大段 Prompt 贴过去，不仅繁琐，还容易丢失多轮对话的完整脉络。MarkCraft 把历史对话视为本地工程资产，直接对接目标智能体的原生存储与会话协议，实现**把对话拖过去就能直接说“继续”**。
+| 接续前 · Claude Code（`claude --resume`） | 接续后 · Codex（`codex resume`） |
+| --- | --- |
+| ![Claude Code 原会话的最后一轮，用户要求复用导出菜单，下面依次是三条助手回复](docs/images/handoff-claude-before.png) | ![Codex 恢复后的同一轮，保留了相同的提问、三条回复和末尾的验证结果，下方可继续输入](docs/images/handoff-codex-after.png) |
 
----
+截图只节选了最后一轮。用 Codex 的原生恢复接口读回整段会话后，**214 条可见消息的角色、正文和先后顺序逐条一致**，工作目录仍是 `D:\MarkCraft\source`。接下来在 Codex 发出的消息会留在这个新会话里。长对话进入下一轮推理时，能使用多少历史仍取决于目标模型的上下文窗口和压缩策略。
 
-## 核心亮点一：AI 对话资料库与跨智能体原生接续
+### 和已有的 handoff 方案怎么选
 
-### 把 Claude Code 里的一段讨论接到 Codex
+| 方案 | 换到下一端时会得到什么 | 适合什么时候用 |
+| --- | --- | --- |
+| Matt Pocock 的 `/handoff` 技能 | 源智能体把当前讨论整理成交接文档，可按下一场会话的任务挑选重点，并引用已有方案或提交。新会话从这份摘要开始。[技能原文](https://github.com/mattpocock/skills/blob/main/skills/productivity/handoff/SKILL.md) | 只想带走结论和下一步，给新会话留出更多上下文空间。 |
+| Agent Handoff | 本机切换也能在目标端恢复可见对话，无需调用源模型。还可以把对话和工具记录做成 ZIP 或加密链接，交给另一台机器上的同事。[项目说明](https://github.com/DavidDingXu/agent-handoff#use) · [本机切换](https://github.com/DavidDingXu/agent-handoff/blob/main/docs/usage.md#local-agent-switching) | 要把任务交给别人、换机器，或在终端里切换智能体。 |
+| **MarkCraft** | 在 Windows 侧栏按智能体和项目找到旧对话，读到要接着做的地方，拖到目标项目即可。目标窗口里保留逐条问答，还能直接访问该目录里的项目文件。 | 在同一台机器上来回换工具，尤其是要回查早先的要求、比较过的方案或用户后来补的条件时。 |
+
+### 在 MarkCraft 里找到对话、查看原文、选择接收端
 
 **找到上次聊到的位置。** 在左侧「对话」按智能体和项目展开，选中会话后，右侧按时间显示问答。图中「查找开源 Rust 阅读器」有 214 条消息，点「查看更早的 40 条消息」可以继续向前翻。
 
@@ -85,7 +90,9 @@ Codex、Claude Code、Antigravity、DeepSeek Harness 的对话都可以**相互�
 
 ---
 
-## 核心亮点二：本地优先的即时排版 Markdown 编辑器
+## 本地 Markdown 编辑器
+
+![编辑器左侧展开章节大纲，正文中嵌有接驳时刻图和发车表](docs/images/editor.png)
 
 - **所见即所得与增量响应**：Rust 后端用 `pulldown-cmark`、`html5ever`、`latex2mathml` 解析结构并转换公式，前端基于 CodeMirror 6 承载输入法与编辑；纯文字段落改动走增量局部更新而不全量重排；光标离开加粗/斜体/链接/行内公式后自动收起标记。点击左下角「源码」或按 `Ctrl + /` 可随时查看带行号和配色的完整源文。
 - **原生级表格编辑与拖拽换位**：直接点击单元格中任意字符处落位光标编辑（不额外弹出独立输入框），`Tab` / `Shift + Tab` / `Enter` 顺畅跳转，`Esc` 撤回本次进入单元格后的输入；拖住表头上边缘可整列换位、拖住正文行首格左边缘可整行换位（带透明预览与落点线，`Ctrl + Z` 撤销）；右键单元格调整列对齐、增删行列或复制整表 Markdown。
@@ -101,7 +108,7 @@ Codex、Claude Code、Antigravity、DeepSeek Harness 的对话都可以**相互�
 
 ---
 
-## 核心亮点三：统一导出与三栏 Word 排版工作台
+## 统一导出与三栏 Word 排版工作台
 
 窗口右上角与「文件 → 导出」共用同一菜单（阅读对话时自动多出「Markdown 文稿 (.md)…」）：
 
