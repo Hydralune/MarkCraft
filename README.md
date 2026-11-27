@@ -1,89 +1,119 @@
 # MarkCraft
 
-**用 Rust 构建的本地优先 Windows Markdown 写作与 AI 对话工作台。**
+**用 Rust 构建的本地优先 Windows Markdown 编辑器与跨智能体对话工作台。**
 
-MarkCraft 将**所见即所得的 Markdown 编辑器**与**跨智能体本地对话资料库**合二为一：日常写作时，打开 `.md` 就能在排好版的正文中直接编辑；与 AI 协作时，又能按项目汇总本机多个 Coding Agent 的对话原话、一键排版导出，甚至将对话与工作区直接接续到另一款智能体继续任务。免费开源，数据始终留在你的电脑本地。
+MarkCraft 把两件高频工作放进同一个本地桌面应用里：**像 Typora 一样打开 `.md` 就在排好版的正文里直接写**，同时把本机 **Codex、Claude Code、Antigravity、DeepSeek Harness** 的历史对话统一管起来——支持原话/Markdown 双视图阅读、全文大纲跳转、多格式导出归档，还能把一场对话连同识别出的项目工作区**直接写成另一款智能体的原生会话继续聊**。免费开源，数据不上传云端。
 
-**[下载 Windows x64 便携版](https://github.com/Hydralune/MarkCraft/releases/latest)** · [示例文稿](examples/城市雨量观测手记.md) · [使用指南](ui/guide.md) · [对话资料库与接续指南](docs/对话资料库.md) · [MIT 许可证](LICENSE)
+**[下载 Windows x64 便携版](https://github.com/Hydralune/MarkCraft/releases/latest)** · [示例文稿《散场以后的四班车》](examples/散场以后的四班车.md) · [使用指南](ui/guide.md) · [对话资料库与接续指南](docs/对话资料库.md) · [MIT 许可证](LICENSE)
 
-![MarkCraft 默认「澄明浅色」主题界面：左侧章节大纲，右侧正文包含可编辑表格与雨量曲线](docs/images/editor.png)
-
----
-
-## 整体定位
-
-MarkCraft 围绕三条核心原则设计，既替代收费的桌面 Markdown 编辑器，也补全本地 AI 开发工作流中缺失的“对话资产层”：
-
-1. **本地优先、即开即写的纯文本写作**
-   采用类似 Typora 的即时排版交互：光标移出时自动隐藏 Markdown 标记，点击单元格或公式即可原位修改，不绑定专有格式，所有内容始终以标准 `.md` 保存于本地磁盘。
-2. **面向中文排版与正式交付的导出工作台**
-   不仅能直接导出带可选中文字的 PDF，还提供**三栏式 Word 排版工作台**——内置 7 套中文文稿模板与实时首页预览，支持细调六级标题、正文字距与表格样式，打通从笔记到论文、报告和方案的最后一公里。
-3. **把 AI 对话当成可检索、可复用、可迁移的一等资产**
-   本地 Coding Agent 的历史会话散落在不同目录和格式中。MarkCraft 在显式授权后统一纳管 **Codex、Claude Code、Antigravity 与 DeepSeek Harness** 的本地记录，支持对话/Markdown 双视图阅读、多格式导出归档，以及**跨智能体原生会话接续**。
+![编辑器左侧展开章节大纲，正文中嵌有接驳时刻图和发车表](docs/images/editor.png)
 
 ---
 
-## 核心特色
+## 核心定位
 
-### 一、即时排版与原生级块编辑
+MarkCraft 瞄准两个很具体的日常痛点：
 
-- **所见即所得，无需切窗预览**：标题、引用、嵌套列表、任务清单、脚注与行内格式在正文中直接渲染，仅在光标聚焦到行内元素时才按需展示标记；点击左下角「源码」或按 `Ctrl + /` 可随时切入带语法高亮与行号的完整源码模式。
-- **原生体验的表格编辑**：点击文字位置直接输入，`Tab` / `Shift + Tab` / `Enter` 顺畅切换单元格；拖动表头上边缘可移动整列、拖动正文首格左边缘可移动整行，支持半透明预览、落点线与 `Ctrl + Z` 撤销；右键单元格即可调整对齐或增删行列。
-- **代码、数学公式与流程图**：代码块支持语言搜索与语法高亮，右上角可一键「选中代码」；行内 `$…$` 与块级 `$$…$$` LaTeX 公式随写随排；Mermaid 代码块直接渲染为流程图。
-- **图片管理与一键归档**：支持剪贴板直接贴图并自动保存到文稿旁的 `.assets` 目录；点击图片可修改说明、替换图片文件、调整路径或移除引用；「收集本文图片」可将分散的本地与网络图片集中归档。
-- **段落整理与手势多选**：指向段首可通过六点手柄快速转换标题级别、新建、复制或上下拖拽重排，点击箭头平滑折叠段落或整个章节；触屏左右轻扫或鼠标从段首/留白横拖可进入**段落多选**，在底部操作栏批量转为待办、切换标题、复制、剪切或删除。
-- **主题与专注视图**：默认「澄明浅色」主题支持多级标题自动编号与 `[TOC]` 目录生成，另内置「素笺」「Claudette」「Claudette Dark」等主题并支持自定义 CSS 热重载；提供专注模式（`F8`）、打字机模式（`F9`）和全屏写作（`F11`）。
+1. **替代收费桌面 Markdown 编辑器，保留纯粹的本地 `.md` 写作流**
+   打开文件就能在排版好的正文里直接改字、填表格、编辑公式，光标离开行内元素后标记自动收起，所有文件以普通文本保存在自己硬盘上。
+2. **打通多个本地 Coding Agent 之间的上下文断层**
+   写代码时经常需要在多个智能体之间切换——比如在一个工具里讨论完方案、额度用完或卡在某个问题，想切到另一个工具接着改同一份仓库代码。传统的做法是手动总结前情、复制一大段 Prompt 贴过去，不仅繁琐，还容易丢失多轮对话的完整脉络。MarkCraft 把历史对话视为本地工程资产，直接对接目标智能体的原生存储与会话协议，实现**把对话拖过去就能直接说“继续”**。
 
-![同一份文稿中的行内公式、块公式、Rust 代码高亮与 Mermaid 流程图](docs/images/math-code.png)
+---
 
-### 二、安全保存、外部协同与长文导航
+## 核心亮点一：AI 对话资料库与跨智能体原生接续
 
-- **默认自动保存与草稿箱**：停笔约一秒自动写回原文件，未命名文稿自动存入「文件 → 草稿箱」，关闭或重启不丢稿。
-- **AI 后台改写感知与冲突保护**：当外部编辑器或 AI Agent 在后台修改当前打开的 `.md` 文件时，未编辑的窗口会自动同步新内容并保持滚动位置；若两边均有改动，自动保存会暂停并弹出「保留两版」保护窗口，避免静默覆盖。
-- **长文大纲与全目录检索**：左侧大纲支持关键词筛选、章节折叠与跟随滚动高亮；文件夹树支持展开分支、进入目录、后退/前进与返回上一级；`Ctrl + P` 快速模糊打开最近文件，`Ctrl + Shift + F` 搜索整个文件夹正文并跳转定位，`Ctrl + Alt + G` 支持行号、相对偏移、百分比或 `行:列` 跳转。
+> **为什么不采用“把聊天记录打包成一条提示词”？**
+> 拼装长 Prompt 会把多轮问答压扁成单条输入，混入工具噪声，模型也未必把它当成既有对话历史。MarkCraft 做的是**「可见原话提纯 → 噪声剥离 → 工作目录推断 → 目标端原生格式写入」**：接续后，目标客户端看到的是一条真实的原生历史会话，每条用户提问与助手回复都保留各自的角色和顺序，切过去直接输入「继续」即可顺着上一轮上下文往下推理和读写文件。
 
-### 三、统一导出与 Word 排版工作台
+### 1. 权限可控的本机来源扫描
 
-窗口右上角与「文件 → 导出」共用统一「导出」菜单，提供一致的导出体验：
+从「视图 → 对话资料库」或侧栏「对话」首次进入时，**四个来源默认全部未勾选**，保存前不会扫描任何聊天内容。授权按当前 Windows 用户保存在 `%LOCALAPPDATA%\MarkCraft\chat-sources.json`，随时可在「管理来源」更改目录或撤回权限。
 
-- **PDF 与网页导出**：按 `Ctrl + Shift + E` 直接通过原生打印引擎导出可检索文字的 PDF（可在 `Ctrl + ,` 设置中配置 A4 / A5 / Letter 纸张、页边距与页码），也支持导出独立 HTML。
-- **多格式文档转换**：配合本地 Pandoc，可导出 Word（DOCX）、EPUB、ODT、RTF 与 LaTeX 源文件。
-- **三栏式 Word 导出工作台**：
-  - **左侧选模板**：内置「通用文稿、学术论文、工作报告、会议纪要、项目方案、人文随笔、技术手册」7 套样式模板；若将单位或学校格式另存为 `%APPDATA%\MarkCraft\word-reference.docx`，还会自动出现「个人模板」。
-  - **中间实时预览**：首页默认整页居中展示，支持「页宽 / 整页」切换；本机装有 Microsoft Word 时直接呈现真实分页效果。
-  - **右侧精细微调**：按标题、正文、表格分组调整六级标题字号、段前段后间距、字体颜色、首行缩进、行距、表头底色与单元格内边距。等宽表格自动按内容分配列宽并在跨页时重复表头。
-
-![Word 导出工作台：左侧七套模板、中间首页实时预览、右侧标题与正文表格细调](docs/images/word-export.png)
-
-### 四、AI 对话资料库与跨智能体原生接续
-
-> **隐私与权限优先**：首次从「视图 → 对话资料库」或侧栏「对话」进入时，四个来源默认均未勾选。只有在你明确勾选并保存后，MarkCraft 才会只读扫描本机已落盘的记录，且随时可在「管理来源」更改目录或撤回授权。
-
-- **四大智能体统一纳管**：自动识别本机的 **Codex、Claude Code、Antigravity、DeepSeek Harness**（使用原厂图标），按智能体与项目分组展示，资料库打开期间自动增量刷新并锁定当前阅读位置。
-- **原话与 Markdown 双视图 + 统一大纲**：既可以按聊天气泡回看原始对话，也能一键切为排版整洁的 Markdown 文稿视图；左侧「大纲」自动提取每一轮提问、回复与正文标题，在双视图间共享定位跳转。
-- **对话即文档，随时导出归档**：在对话或 Markdown 视图下，右上角统一「导出」菜单会自动增加「Markdown 文稿 (.md)…」选项（`Ctrl + S`），也可直接将整场对话导出为 PDF、Word、HTML 等格式长期保存。
-- **跨智能体原生对话接续**：
-  - **拖放即接续**：将左侧任意一条对话拖到另一个智能体或目标项目下，即可将其可见原话直接写入目标智能体的原生会话格式；在同智能体上点击「接续…」也可新开独立分支、修改标题或指定工作区。
-  - **自动识别真实工作目录**：当源会话记录的根目录过于宽泛（如仅记录盘符根目录）时，MarkCraft 会结合实际文件编辑与命令执行记录推断真实项目目录，无需手动拼写交接提示词，切到新智能体后直接说「继续」即可顺畅衔接。
-  - **深度链接直达**：支持粘贴 `codex://threads/…` 链接，快速定位本机对应的 Codex 会话并预览或接续。
-
-详细配置、插件安装及各接收端要求请参阅 [对话资料库与接续指南](docs/对话资料库.md)。
+| 来源 | 默认根目录（支持环境变量覆盖） | 作为来源读取的内容 |
+| --- | --- | --- |
+| **Codex** | `%USERPROFILE%\.codex`（`CODEX_HOME`） | `sessions/`、`archived_sessions/` 下的 `.jsonl` 及 `session_index.jsonl` 标题索引 |
+| **Claude Code** | `%USERPROFILE%\.claude`（`CLAUDE_CONFIG_DIR`） | `projects/` 下各项目的会话 `.jsonl` 与 `custom-title` / `ai-title` 标题记录 |
+| **Antigravity** | `%USERPROFILE%\.gemini`（`MARKCRAFT_GEMINI_DIR`） | `antigravity/`（桌面端）与 `antigravity-cli/` 下的日志记录及摘要数据库 |
+| **DeepSeek Harness** | `%USERPROFILE%\.dsh`（`DSH_HOME`） | Harness 分段压缩日志（含 `zstd` 帧解析）与会话标题更新 |
 
 ![对话来源与授权设置界面：按来源单独勾选授权、更改记录目录与管理原生接续组件](docs/images/chat-setup.png)
+
+### 2. 四来源 × 五接收端：各智能体如何实现原生接续
+
+Codex、Claude Code、Antigravity、DeepSeek Harness 的对话都可以**相互跨端接续**，也可以**在同一个智能体内部接续分叉**（自动分配新的分支标识，用来从某段历史开出第二条思路线）。
+
+| 接收端 | MarkCraft 在底层写入了什么 | 使用前提与接续后入口 |
+| --- | --- | --- |
+| **Codex** | 生成原生 `sessions/YYYY/MM/DD/rollout-*.jsonl`（含 `session_meta`、`response_item`、`event_msg` 与 `thread_name_updated`），并同步登记到 `session_index.jsonl` | 安装并登录 Codex。完成后可一键拉起 Codex，或复制 `codex resume <id>` 在目标目录继续 |
+| **Claude Code** | 按 Claude Code 的 UTF-16 路径哈希规则生成 `projects/<project-key>/<id>.jsonl`，写入带 `uuid` / `parentUuid` 链条的用户与助手记录及 `custom-title` | 安装并登录 Claude Code。完成后复制 `claude --resume <id>` 在对应项目目录恢复 |
+| **DeepSeek Harness** | 通过随包提供的插件 `markcraft-handoff`（仅监听 `127.0.0.1` 回环地址并以 64 位随机十六进制令牌校验）直接调用 Harness 的 `workspaceRegistry` 与 `sessionPersistence`，生成原生事件帧并挂载到目标工作区 | 在「管理来源 → 原生接续组件」一键安装插件并运行 Harness 即可。拖入后直接出现在对应工作区侧栏 |
+| **Antigravity 桌面端** | 调用官方 `agy acp --stdio` 初始化原生会话壳，向 SQLite `steps` 表写入原话载荷与时间戳，再用 `session/load` **逐条回读核对角色、正文与工作区 URI**，同时关联或创建桌面项目登记（`config/projects/*.json`） | 需 Windows 版 `agy` CLI 1.5.x、支持 `node:sqlite` 的 Node.js 22.13+，且已完成 `agy acp --login`。完成后可在桌面端对应项目侧栏打开（若已打开应用未刷新，重开一次即可） |
+| **Antigravity CLI** | 同上走原生 ACP 初始化、SQLite 步进写入与回读校验，登记至 `antigravity-cli` | 前提同上。完成后可直接复制 `agy --conversation <id>` 在目标目录恢复 |
+
+### 3. “无感接续”的关键机制
+
+- **原话提纯与系统噪声剥离**：只抽取用户真实提问与助手可见回复，保留角色、顺序与时间戳；自动剔除各智能体注入的 `<environment_context>`、`<permissions instructions>`、`<user_instructions>`、`<skill>`、`<system-reminder>`、Claude 的 `isMeta`/`isSidechain`/`isCompactSummary` 内部记录、工具执行的超大输出流以及 `<USER_REQUEST>` 包装标签，不把运行环境垃圾带入下一家上下文。
+- **自动识别真实项目工作目录**：像 Codex 这类会话有时会从盘符根目录（如 `C:\`）启动，声明目录过于宽泛。MarkCraft 会回溯最近 12 轮内**已成功完成的文件修改（`FileChange` / `patch_apply_end`）和成功命令的工作目录（`CommandExecution` / `exec_command_end`）**，沿路径向上定位 `.git` 或 `Cargo.toml` / `package.json` / `pyproject.toml` / `go.mod` / `CMakeLists.txt`，按轮次权重打分并排除无关文字里提到的路径，自动识别你真正在改的项目文件夹作为目标工作区。
+- **三种接续交互方式**：
+  1. **拖放即接续**：在左侧栏按住任意对话，直接拖到目标智能体名称（自动识别工作区）、目标项目分支（使用该项目目录）或目标对话上（悬停未展开的智能体 450 ms 会自动展开），沿用默认名称立即创建副本。
+  2. **右键复制 / 粘贴接续**：在对话上右键「复制对话」（`Ctrl + C`）并在目标智能体或项目分支上「粘贴为接续会话」（`Ctrl + V`），支持 `F2` 在资料库内重命名。
+  3. **「接续…」精细配置**：点击阅读区右上角「接续…」或右键「接续到…」，可自由切换接收智能体（含同智能体分叉多开）、自定义最长 120 字符的新对话名称、核对系统统计的文件变更数/命令次数证据，或手动改选任意本地目录。
+- **幂等去重与接续边界**：基于源会话、目标目录、可见消息列表与可选分支/名称计算确定性 SHA-256 ID。把同一段快照重复拖到同一工作区会**直接复用已有副本**而不会刷出大量重复记录。接续范围是**可见原话、角色、顺序、时间戳与项目工作目录**（图片/文件附件以占位标记保留，不迁移附件本体、历史工具调用状态、运行中终端与源端账号凭据；DeepSeek Harness 与 Antigravity 单次原文接续上限为 16 MiB）。
+
+### 4. 对话阅读、统一大纲、深度链接与导出归档
+
+- **原话 / Markdown 双视图与 3 秒增量刷新**：既可用聊天气泡读原话，也能一键切为文档级排版视图；长对话分页按需加载，阅读期间每 3 秒检查一次本机记录并增量同步新消息，往前翻阅时锁定当前位置。
+- **双视图共享对话大纲**：切到左侧「大纲」即可按「第 N 轮提问 / 智能体回复 / 回复内多级标题」筛选和折叠跳转，切换原话与 Markdown 视图后位置依然对齐。
+- **Codex 深度链接直达**：点「打开链接」粘贴 `codex://threads/<uuid>`（或整段 Markdown 链接），直接从本机已授权资料库定位并打开该会话。
+- **对话导出归档**：在对话或 Markdown 视图下，点右上角统一「导出」按钮或按 `Ctrl + S` 可将完整对话另存为 `.md`，也能直接导出为 PDF、Word、HTML、EPUB、ODT、RTF 和 LaTeX。
+
+详细配置与接续排错请参阅 [对话资料库与接续指南](docs/对话资料库.md)。
+
+---
+
+## 核心亮点二：本地优先的即时排版 Markdown 编辑器
+
+- **所见即所得与增量响应**：Rust 后端用 `pulldown-cmark`、`html5ever`、`latex2mathml` 解析结构并转换公式，前端基于 CodeMirror 6 承载输入法与编辑；纯文字段落改动走增量局部更新而不全量重排；光标离开加粗/斜体/链接/行内公式后自动收起标记。点击左下角「源码」或按 `Ctrl + /` 可随时查看带行号和配色的完整源文。
+- **原生级表格编辑与拖拽换位**：直接点击单元格中任意字符处落位光标编辑（不额外弹出独立输入框），`Tab` / `Shift + Tab` / `Enter` 顺畅跳转，`Esc` 撤回本次进入单元格后的输入；拖住表头上边缘可整列换位、拖住正文行首格左边缘可整行换位（带透明预览与落点线，`Ctrl + Z` 撤销）；右键单元格调整列对齐、增删行列或复制整表 Markdown。
+- **代码、LaTeX 公式、流程图与图片**：
+  - 代码块右上角支持搜索语言名称或简称切换语法高亮，支持「选中代码」仅选正文不含围栏；Mermaid 代码块直接渲染为流程图。
+  - 行内 `$…$` 与块级 `$$…$$` 公式随输入预览；点击公式自身才展开 LaTeX，编辑公式旁的正文和脚注互不干扰。
+  - 剪贴板贴图自动写入文稿旁的 `.assets` 目录；点击图片可改说明、点击路径替换图片、手动改路径或删除图片；「文件 → 收集本文图片」可将分散的本地图与网络图统一归档到 `.assets`。
+- **段落手柄、章节折叠与手势多选**：指向段首可通过六点手柄改标题级别、新建、复制或上下拖拽重排；段首箭头可平滑旋转折叠普通段落或整节标题；触屏左右轻扫或鼠标从段首/留白横拖可进入**段落多选**，通过底部工具栏批量转为待办、切换标题、全选、复制、剪切或删除。
+- **自动保存与 AI 后台改写保护**：默认停笔约 1 秒自动保存，未命名文稿自动落入「文件 → 草稿箱」。配合内容 SHA-256 校验、磁盘监听器与 Win32 `ReplaceFileW` 原子替换：当后台 AI 或其他编辑器改写当前文稿时，无未保存改动的窗口会自动载入新版并保留滚动位置；两边都有改动则暂停自动保存并弹出「保留两版」冲突窗口，防止覆盖丢稿。
+- **长文导航、目录浏览与可定制主题**：大纲支持筛选、折叠和跟随正文滚动高亮；「文件」侧栏支持分支展开、进入目录、后退/前进与返回上一级；`Ctrl + P` 快速模糊打开，`Ctrl + Shift + F` 跨子目录搜索正文并定位到行；默认「澄明浅色」主题支持多级标题自动编号与 `[TOC]` 目录生成，另内置「素笺」「Claudette」「Claudette Dark」主题并支持编辑 CSS 后热重载。
+
+![正文中的换乘余量公式与 Python 验算代码](docs/images/math-code.png)
+
+---
+
+## 核心亮点三：统一导出与三栏 Word 排版工作台
+
+窗口右上角与「文件 → 导出」共用同一菜单（阅读对话时自动多出「Markdown 文稿 (.md)…」）：
+
+- **原生 PDF 与网页导出**：按 `Ctrl + Shift + E` 调用 WebView2 原生打印管线导出可选中文字的 PDF（在 `Ctrl + ,` 设置中可调整 A4 / A5 / Letter 纸张、页边距和页码），也可导出独立 HTML。
+- **多格式 Pandoc 转换**：配置好 Pandoc 后支持导出 Word（DOCX）、EPUB、ODT、RTF 与 LaTeX 源文件。
+- **三栏式 Word 导出工作台**：
+  - **左侧模板栏**：内置「通用文稿、学术论文、工作报告、会议纪要、项目方案、人文随笔、技术手册」7 套预设；若将个人或学校排版要求另存为 `%APPDATA%\MarkCraft\word-reference.docx`，此处还会出现「个人模板」。
+  - **中间首页预览**：首页默认整页居中显示，支持「页宽 / 整页」切换；本机安装有桌面版 Microsoft Word 时展示真实分页效果（无法调用 Word 时界面明确标注「近似预览」）。
+  - **右侧精细样式面板**：按标题、正文、表格分组调整六级标题字号、段前段后间距、字体、颜色、对齐、行距、首行缩进、表头底色与单元格上下内边距。配合内置 `export/word.lua` 过滤器，等宽 Markdown 表格自动按内容分配列宽、跨页自动重复表头，HTML `<img>` 与 `<br>` 也会保留。
+
+![Word 导出工作台：左侧七套模板、中间首页实时预览、右侧标题与正文表格细调](docs/images/word-export.png)
 
 ---
 
 ## 开始使用
 
-1. 前往 [Releases](https://github.com/Hydralune/MarkCraft/releases/latest) 下载 `MarkCraft-v0.4.0-windows-x64.zip`，将**整个文件夹**解压到希望长期保存的目录。
-2. 双击 `MarkCraft.exe` 即可开始写作，按 `Ctrl + O` 打开已有文件，或打开压缩包内的 `examples/城市雨量观测手记.md` 体验完整排版。
-3. **（可选）关联 `.md` 默认打开方式与文档图标**：在解压目录的 PowerShell 中运行下方命令，随后在 Windows 资源管理器右键 `.md` 文件 →「打开方式」设为 MarkCraft 即可：
+1. 前往 [Releases](https://github.com/Hydralune/MarkCraft/releases/latest) 下载 `MarkCraft-v0.4.0-windows-x64.zip`，将**整个文件夹**解压到长期使用的路径。
+2. 双击 `MarkCraft.exe` 开始写作，按 `Ctrl + O` 可打开本机的 Markdown 文件。
+3. **（可选）关联 `.md` 文件类型与专用文档图标**：在解压目录的 PowerShell 中运行以下命令，再到资源管理器右键 `.md` 文件 →「打开方式」将 MarkCraft 设为默认即可（只对当前 Windows 用户生效；移动目录后重新执行一次即可刷新路径）：
 
 ```powershell
 .\register-markdown.ps1 -Executable (Resolve-Path .\MarkCraft.exe)
 ```
 
-> **运行环境说明**：程序复用 Windows 系统内置的 Microsoft Edge WebView2（若启动时提示缺失，可前往[微软 WebView2 下载页](https://developer.microsoft.com/en-us/microsoft-edge/webview2/)安装 Evergreen Runtime）。需要导出 Word、EPUB、ODT、RTF 或 LaTeX 时，请将 [Pandoc](https://pandoc.org/) 加入系统 `PATH` 或放在 `MarkCraft.exe` 同级的 `tools/pandoc/pandoc.exe`。移动便携目录后重新运行一次注册脚本即可刷新图标与路径。
+> **依赖说明**：程序复用 Windows 自带的 Microsoft Edge WebView2（若启动提示缺少运行时，可前往[微软 WebView2 下载页](https://developer.microsoft.com/en-us/microsoft-edge/webview2/)安装 Evergreen Runtime）。导出 Word、EPUB、ODT、RTF 或 LaTeX 需将 [Pandoc](https://pandoc.org/) 加入 `PATH` 或放在程序同级 `tools/pandoc/pandoc.exe`。
 
 ---
 
@@ -91,50 +121,43 @@ MarkCraft 围绕三条核心原则设计，既替代收费的桌面 Markdown 编
 
 | 快捷键 | 功能 | 快捷键 | 功能 |
 | --- | --- | --- | --- |
-| `Ctrl + N` / `Ctrl + O` | 新建 / 打开文稿 | `Ctrl + ,` | 打开设置（写作、图片、PDF、对话） |
-| `Ctrl + S` / `Ctrl + Shift + S` | 保存（对话中为导出 `.md`）/ 另存为 | `Ctrl + /` | 切换源码模式 |
+| `Ctrl + N` / `Ctrl + O` | 新建 / 打开文稿 | `Ctrl + ,` | 打开设置（写作、导航图片、PDF、对话） |
+| `Ctrl + S` / `Ctrl + Shift + S` | 保存（对话视图为导出 `.md`）/ 另存为 | `Ctrl + /` | 切换源码模式 |
 | `Ctrl + P` | 快速打开最近文件 | `Ctrl + Shift + F` | 文件夹内全文搜索 |
-| `Ctrl + F` / `Ctrl + H` | 当前文稿查找 / 替换 | `Ctrl + Alt + G` | 跳至指定行或 `行:列` |
+| `Ctrl + F` / `Ctrl + H` | 当前文稿查找 / 替换 | `Ctrl + Alt + G` | 跳至行（支持 `+5`、`50%`、`12:8`） |
 | `Ctrl + Shift + 1` / `3` / `L` | 大纲 / 文件树 / 切换侧栏 | `F8` / `F9` / `F11` | 专注模式 / 打字机模式 / 全屏 |
 | `Ctrl + 0` – `6` | 设为正文 / 一至六级标题 | `Ctrl + Shift + E` | 导出为 PDF |
 
 ---
 
-## 技术架构与性能基准
+## 体积、架构与内存基准
 
-MarkCraft 采用 **Rust 原生底座 + 系统 WebView2 渲染** 的轻量架构，既免去打包整套独立浏览器内核的体积膨胀，也保证文件 I/O、解析与系统交互的性能与可靠性：
+MarkCraft 使用 **Rust（`tao` + `wry`）+ 系统 WebView2** 架构，不捆绑整套 Chromium，因此分发体积小、Rust 主进程开销极低：
 
-- **Rust 核心层**：基于 `tao` 与 `wry` 管理原生窗口和 WebView2；使用 `pulldown-cmark`、`html5ever`、`latex2mathml` 进行高效解析与公式转换；承担原子写入、外部文件改动监测、Word/Pandoc 导出管线以及本地多智能体日志解析与原生会话写入。
-- **轻量前端编辑层**：基于 CodeMirror 6 构建即时排版编辑器与输入法支持，集成 `highlight.js`、`Mermaid` 与 `linkify-it`。
-- **分发体积**：`v0.4.0` Windows x64 便携压缩包约 **3.55 MiB**（含主程序、加载器、Harness 接续插件、离线文档与示例），`MarkCraft.exe` 主程序约 **8.97 MiB**。
+- **v0.4.0 分发体积**：Windows x64 便携包约 **3.55 MiB**（含主程序、加载器、Harness 接续插件、离线指南、示例与许可），`MarkCraft.exe` 主程序约 **8.97 MiB**。
+- **v0.2.0 单窗口首页静置内存基准**：
 
-### 单窗口内存基准（v0.2.0 实测参考）
-
-| 测试文稿 | 整棵进程树专用工作集（中位数） | 5 次实测范围 | Rust 主进程（中位数） |
+| 测试文稿 | 整个进程树专用工作集（中位数） | 5 次实测范围 | Rust 主进程（中位数） |
 | --- | ---: | ---: | ---: |
 | 普通中文笔记（129 字节，含三项列表） | 91.4 MiB | 90.4–91.7 MiB | 4.5 MiB |
-| 《城市雨量观测手记》（5,290 字节，含本地图、48 行表格、代码、公式、流程图） | 99.8 MiB | 97.6–103.9 MiB | 4.5 MiB |
+| v0.2.0 基准文稿（5,290 字节，含本地图、48 条明细、代码、公式、流程图） | 99.8 MiB | 97.6–103.9 MiB | 4.5 MiB |
 
-*测量环境：Windows 11 x64（构建 22621）、WebView2 158.0.4370.33。使用全新配置打开单窗口停留在首页静置 10 秒，每隔约 2 秒采集 `WorkingSetPrivate`，合计 MarkCraft 与其拉起的 WebView2 子进程（每次共 7 个进程）。浏览长文、加载多张大图或开启对话资料库时占用会随内容动态变化。*
+*测量环境：Windows 11 x64（构建 22621）、WebView2 158.0.4370.33。新配置启动单窗口停在首页静置 10 秒，每约 2 秒采集 Windows `WorkingSetPrivate`，合计 MarkCraft 与其 WebView2 子进程（共 7 个进程）。滚动浏览更多图表、加载大图或开启对话资料库时占用会随内容动态变化。*
 
 ---
 
 ## 从源码构建
 
-### 1. 编译与运行测试
-
-在 Windows 上安装支持 **Rust 2024 edition** 的稳定版工具链与对应的 C++ 链接器。仓库内已包含预构建的前端脚本，可直接编译并测试：
+在 Windows 上安装支持 **Rust 2024 edition** 的稳定版工具链与对应的 C++ 链接器。仓库内已附带构建好的前端脚本，可直接编译并运行测试：
 
 ```powershell
 .\build-windows.ps1
 cargo test --release --locked
 ```
 
-使用 `x86_64-pc-windows-gnu` 工具链时，脚本会自动复制匹配的 `WebView2Loader.dll` 并嵌入应用与文档图标。
+使用 `x86_64-pc-windows-gnu` 工具链时，构建脚本会自动复制匹配的 `WebView2Loader.dll` 并嵌入应用与 `.md` 文档图标。
 
-### 2. 修改前端界面或重新打包
-
-若修改了 `ui/writer.js` 或其依赖的编辑模块，需先重新打包前端资源，再执行 Rust 构建：
+若修改了 `ui/writer.js` 或编辑器前端模块，先重新打包前端再构建 Rust：
 
 ```powershell
 cd ui
@@ -144,14 +167,14 @@ cd ..
 .\build-windows.ps1
 ```
 
-- **打包发行版**：运行 `.\package-windows.ps1` 可在 `dist/` 生成完整便携 ZIP 包及 `SHA256SUMS.txt`。
-- **重建 Harness 接续插件**：从根目录执行 `npm pack ./integrations/deepseek-handoff` 即可生成对应 `.tgz` 放到 `MarkCraft.exe` 同级目录。
-- **自定义主题**：主题源文件位于 `themes/`，也可直接在软件「主题 → 打开主题文件夹」中修改 CSS 并热重载。
+- **构建完整便携发行包**：运行 `.\package-windows.ps1` 输出到 `dist/`（含 `SHA256SUMS.txt`）。
+- **重建 Harness 接续插件**：在仓库根目录运行 `npm pack ./integrations/deepseek-handoff`，将生成的 `.tgz` 放到 `MarkCraft.exe` 同级目录。
+- **自定义主题**：主题源文件位于 `themes/`，可在程序「主题 → 打开主题文件夹」直接修改 CSS 并从菜单重载。
 
 ---
 
 ## 开源许可
 
-MarkCraft 本身基于 **MIT 许可证** 免费开源，允许自由使用、修改与分发。各智能体的品牌图标均取自原厂应用或扩展，版权归各自权利人所有。编辑器内集成的 CodeMirror 6、pulldown-cmark、highlight.js、Mermaid、latex2mathml 等第三方组件保留各自原始许可，Claudette 主题改编自 CookPiu 的作品。便携包的 `licenses/` 目录内附有完整第三方许可清单。
+MarkCraft 基于 **MIT 许可证** 免费开源。各智能体的品牌图标取自原厂应用或扩展，版权归各自权利人所有。编辑器所集成的 CodeMirror 6、pulldown-cmark、highlight.js、Mermaid、latex2mathml 等第三方组件保留各自的开源许可，Claudette 主题改编自 CookPiu 的作品，便携包 `licenses/` 目录内附完整清单。
 
 [项目许可证 (LICENSE)](LICENSE) · [第三方组件许可](vendor/) · [Claudette 主题许可](themes/Claudette-LICENSE.txt)
