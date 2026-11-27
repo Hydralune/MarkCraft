@@ -16,6 +16,7 @@ pulldown-cmark = "0.13"
 html5ever = "0.38"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+toml = "0.8"
 rfd = { version = "0.15", default-features = false }
 tempfile = "3"
 latex2mathml = "0.2"
@@ -28,5 +29,5 @@ ruzstd = "0.8"
 time = { version = "0.3", features = ["formatting", "parsing"] }
 
 windows = { version = "0.61", features = ["Win32_Foundation"] }
-windows-sys = { version = "0.61", features = ["Win32_UI_WindowsAndMessaging","Win32_Storage_FileSystem"] }
+windows-sys = { version = "0.61", features = ["Win32_UI_WindowsAndMessaging","Win32_UI_Shell","Win32_Storage_FileSystem"] }
 webview2-com = "0.38.2"

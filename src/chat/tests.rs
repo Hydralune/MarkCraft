@@ -244,6 +244,17 @@ fn four_sources_preserve_visible_roles_and_text_across_three_receivers() {
                 .find(|e| e.path.file_stem().unwrap().to_string_lossy().ends_with(id))
                 .unwrap();
             let page = lib.page(&copy.id, "{}").unwrap();
+            if matches!(dest, Recipient::Codex) {
+                let first = BufReader::new(File::open(&copy.path).unwrap())
+                    .lines()
+                    .next()
+                    .unwrap()
+                    .unwrap();
+                assert_eq!(
+                    serde_json::from_str::<Value>(&first).unwrap()["payload"]["model_provider"],
+                    "openai"
+                );
+            }
             let actual: Vec<_> = page["rows"]
                 .as_array()
                 .unwrap()
@@ -259,6 +270,39 @@ fn four_sources_preserve_visible_roles_and_text_across_three_receivers() {
         }
     }
     bridge.join().unwrap();
+}
+
+#[test]
+fn repairing_a_legacy_import_preserves_every_followup_and_its_provider_on_retry() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path();
+    fs::write(
+        home.join("config.toml"),
+        "model_provider='default-gateway'\nprofile='work'\n",
+    )
+    .unwrap();
+    fs::write(
+        home.join("work.config.toml"),
+        "model_provider='work-gateway'\n",
+    )
+    .unwrap();
+    let id = "00000000-1111-4222-a333-444444444444";
+    let file = home.join("rollout.jsonl");
+    let header =
+        json!({"type":"session_meta","payload":{"id":id,"originator":"markcraft","cwd":"C:\\"}});
+    let body = b"{\"type\":\"event_msg\"}\r\n{\"partial\":";
+    fs::write(&file, [format!("{header}\n").as_bytes(), body].concat()).unwrap();
+    codex::repair_import(&file, id, home).unwrap();
+    let fixed = fs::read(&file).unwrap();
+    let mut parts = fixed.splitn(2, |b| *b == b'\n');
+    assert_eq!(
+        serde_json::from_slice::<Value>(parts.next().unwrap()).unwrap()["payload"]["model_provider"],
+        "work-gateway"
+    );
+    assert_eq!(parts.next().unwrap(), body);
+    fs::write(home.join("config.toml"), "model_provider='other'").unwrap();
+    codex::repair_import(&file, id, home).unwrap();
+    assert_eq!(fs::read(file).unwrap(), fixed);
 }
 
 #[test]

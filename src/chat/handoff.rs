@@ -13,7 +13,7 @@ use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 
 const LIMIT: usize = 16 * 1024 * 1024;
 
-#[derive(Clone, Copy, Default, Deserialize, serde::Serialize)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, Deserialize, serde::Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Recipient {
     #[default]

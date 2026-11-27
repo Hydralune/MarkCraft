@@ -4,6 +4,7 @@ mod codex;
 mod deepseek;
 mod handoff;
 pub use handoff::Recipient;
+mod launch;
 mod messages;
 mod metadata;
 mod setup;
@@ -655,12 +656,14 @@ pub fn worker(
     std::thread::spawn(move || {
         let alias_dir = data.join("chat-names");
         let mut last = None;
+        let mut last_transfer: Option<(Recipient, Value)> = None;
         let mut lib = Library::default();
         for j in rx {
             let response = (|| -> io::Result<Value> {
                 let config = setup::Config::read(&data)?;
                 if last.as_ref() != Some(&config) {
                     lib = Library::default();
+                    last_transfer = None;
                     last = Some(config.clone());
                 }
                 let roots = config.roots();
@@ -724,6 +727,39 @@ pub fn worker(
                         rename_entry(&alias_dir, &mut lib, &j.id, &j.query)?;
                         Ok(json!({"title":j.query.trim()}))
                     }
+                    "chatOpenNative" => {
+                        if j.query == "received" {
+                            let (_, receipt) = last_transfer
+                                .as_ref()
+                                .filter(|(dest, value)| {
+                                    *dest == j.recipient
+                                        && config.allows(dest.source())
+                                        && value["id"] == j.id
+                                })
+                                .ok_or_else(|| {
+                                    io::Error::other("接续结果已更新，请在资料库中右键打开。")
+                                })?;
+                            launch::open_session(
+                                j.recipient,
+                                &j.id,
+                                receipt["workspace"].as_str().unwrap_or_default(),
+                                receipt["title"].as_str().unwrap_or_default(),
+                                &roots,
+                            )?;
+                        } else {
+                            let entry = lib
+                                .entries
+                                .values()
+                                .find(|e| e.id == j.id && config.allows(e.source))
+                                .ok_or_else(|| {
+                                    io::Error::other(
+                                        "这段对话已移走或来源授权已更改，请刷新资料库。",
+                                    )
+                                })?;
+                            launch::open(entry, &roots)?;
+                        }
+                        Ok(json!({}))
+                    }
                     "chatHandoff" => {
                         if !config.allows(j.recipient.source()) {
                             return Err(io::Error::other("请先在对话来源中允许目标智能体。"));
@@ -748,6 +784,7 @@ pub fn worker(
             if j.action == "chatHandoff"
                 && let Some(id) = reply.get("id").cloned()
             {
+                last_transfer = Some((j.recipient, reply.clone()));
                 reply["nativeId"] = id;
             }
             reply["kind"] = json!(j.action);

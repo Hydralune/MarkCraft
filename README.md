@@ -23,8 +23,21 @@ MarkCraft 瞄准两个很具体的日常痛点：
 
 ## 核心亮点一：AI 对话资料库与跨智能体原生接续
 
-> **为什么不采用“把聊天记录打包成一条提示词”？**
-> 拼装长 Prompt 会把多轮问答压扁成单条输入，混入工具噪声，模型也未必把它当成既有对话历史。MarkCraft 做的是**「可见原话提纯 → 噪声剥离 → 工作目录推断 → 目标端原生格式写入」**：接续后，目标客户端看到的是一条真实的原生历史会话，每条用户提问与助手回复都保留各自的角色和顺序，切过去直接输入「继续」即可顺着上一轮上下文往下推理和读写文件。
+### 把 Claude Code 里的一段讨论接到 Codex
+
+**找到上次聊到的位置。** 在左侧「对话」按智能体和项目展开，选中会话后，右侧按时间显示问答。图中「查找开源 Rust 阅读器」有 214 条消息，点「查看更早的 40 条消息」可以继续向前翻。
+
+![对话视图中打开了 Claude Code 的一段历史，消息上方有加载更早记录的按钮](docs/images/chat-history.png)
+
+**把长回复当文档读。** 点右上角「Markdown」，同一段讨论会按提问和回复排版。回答里比较 PDF 阅读器、Markdown 阅读器和图片查看器的列表、加粗文字和源码链接都会保留。需要归档时，可点「复制全文」或从「导出」保存为 Markdown 文件。
+
+![同一段会话的 Markdown 视图，回答中的软件列表、源码链接和下一轮提问按文档排版](docs/images/chat-reading-markdown.png)
+
+**换到 Codex 继续。** 点「接续…」，把接收智能体选为 Codex，并核对新对话名称和工作区。图中沿用 `D:\MarkCraft\source`。点「创建接续副本」，再点「在窗口打开」，就能带着前面的问答在同一项目里继续工作。
+
+![接续对话窗口已选中 Codex，显示可编辑的新对话名称与原工作目录](docs/images/chat-handoff-dialog.png)
+
+如果要回到 Claude Code 本身，在对话上右键选「在 Claude Code 窗口打开」即可。MarkCraft 会进入该会话的工作目录，再执行 `claude --resume <id>`。截图中侧栏的 `source` 是目录简称。当前 `main` 分支会在项目行显示完整路径，右键还可以选「复制工作目录」。
 
 ### 1. 权限可控的本机来源扫描
 
@@ -45,8 +58,8 @@ Codex、Claude Code、Antigravity、DeepSeek Harness 的对话都可以**相互�
 
 | 接收端 | MarkCraft 在底层写入了什么 | 使用前提与接续后入口 |
 | --- | --- | --- |
-| **Codex** | 生成原生 `sessions/YYYY/MM/DD/rollout-*.jsonl`（含 `session_meta`、`response_item`、`event_msg` 与 `thread_name_updated`），并同步登记到 `session_index.jsonl` | 安装并登录 Codex。完成后可一键拉起 Codex，或复制 `codex resume <id>` 在目标目录继续 |
-| **Claude Code** | 按 Claude Code 的 UTF-16 路径哈希规则生成 `projects/<project-key>/<id>.jsonl`，写入带 `uuid` / `parentUuid` 链条的用户与助手记录及 `custom-title` | 安装并登录 Claude Code。完成后复制 `claude --resume <id>` 在对应项目目录恢复 |
+| **Codex** | 生成原生 `sessions/YYYY/MM/DD/rollout-*.jsonl`，在 `session_meta` 写入目标端配置的 `model_provider`，按角色写入问答并登记到 `session_index.jsonl` | 安装并登录 Codex。旧版 MarkCraft 创建的副本若提示「模型提供商不可用」，在资料库右键选「在 Codex 窗口打开」，即可补全缺失的提供商并同步索引 |
+| **Claude Code** | 按 Claude Code 的 UTF-16 路径哈希规则生成 `projects/<project-key>/<id>.jsonl`，写入带 `uuid` / `parentUuid` 链条的用户与助手记录及 `custom-title` | 安装并登录 Claude Code。接续完成后点「在窗口打开」，或复制含项目路径和 `claude --resume <id>` 的命令 |
 | **DeepSeek Harness** | 通过随包提供的插件 `markcraft-handoff`（仅监听 `127.0.0.1` 回环地址并以 64 位随机十六进制令牌校验）直接调用 Harness 的 `workspaceRegistry` 与 `sessionPersistence`，生成原生事件帧并挂载到目标工作区 | 在「管理来源 → 原生接续组件」一键安装插件并运行 Harness 即可。拖入后直接出现在对应工作区侧栏 |
 | **Antigravity 桌面端** | 调用官方 `agy acp --stdio` 初始化原生会话壳，向 SQLite `steps` 表写入原话载荷与时间戳，再用 `session/load` **逐条回读核对角色、正文与工作区 URI**，同时关联或创建桌面项目登记（`config/projects/*.json`） | 需 Windows 版 `agy` CLI 1.5.x、支持 `node:sqlite` 的 Node.js 22.13+，且已完成 `agy acp --login`。完成后可在桌面端对应项目侧栏打开（若已打开应用未刷新，重开一次即可） |
 | **Antigravity CLI** | 同上走原生 ACP 初始化、SQLite 步进写入与回读校验，登记至 `antigravity-cli` | 前提同上。完成后可直接复制 `agy --conversation <id>` 在目标目录恢复 |

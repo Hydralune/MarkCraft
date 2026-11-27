@@ -1,11 +1,144 @@
 use super::handoff::{Snapshot, parsed_time, uuid, write_once};
 use serde_json::{Value, json};
 use std::{
-    fs::{File, OpenOptions},
+    fs::{self, File, OpenOptions},
     io::{self, BufRead, BufReader, Write},
-    path::Path,
+    os::windows::{ffi::OsStrExt, fs::OpenOptionsExt},
+    path::{Path, PathBuf},
 };
 use time::{OffsetDateTime, UtcOffset, format_description::well_known::Rfc3339};
+
+fn read_config(path: &Path) -> io::Result<toml::Table> {
+    match fs::read_to_string(path) {
+        Ok(s) => s
+            .trim_start_matches('\u{feff}')
+            .parse()
+            .map_err(|_| io::Error::other(format!("无法解析 Codex 配置 {}", path.display()))),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Default::default()),
+        Err(e) => Err(e),
+    }
+}
+
+fn settings(home: &Path) -> io::Result<(String, PathBuf)> {
+    let config = read_config(&home.join("config.toml"))?;
+    let mut profile = toml::Table::new();
+    if let Some(name) = config.get("profile").and_then(toml::Value::as_str) {
+        if Path::new(name).file_name().and_then(|n| n.to_str()) != Some(name) {
+            return Err(io::Error::other("Codex 配置中的 profile 名称无效。"));
+        }
+        if let Some(inline) = config
+            .get("profiles")
+            .and_then(|v| v.get(name))
+            .and_then(toml::Value::as_table)
+        {
+            profile.clone_from(inline);
+        }
+        profile.extend(read_config(&home.join(format!("{name}.config.toml")))?);
+    }
+    let setting = |key: &str| {
+        profile
+            .get(key)
+            .or_else(|| config.get(key))
+            .and_then(toml::Value::as_str)
+    };
+    let provider = setting("model_provider").unwrap_or("openai").trim();
+    if provider.is_empty() {
+        return Err(io::Error::other("Codex 配置中的 model_provider 为空。"));
+    }
+    let state = std::env::var_os("CODEX_SQLITE_HOME")
+        .filter(|v| !v.is_empty())
+        .map(PathBuf::from)
+        .or_else(|| setting("sqlite_home").map(PathBuf::from))
+        .unwrap_or_else(|| home.to_owned());
+    Ok((
+        provider.to_owned(),
+        if state.is_absolute() {
+            state
+        } else {
+            home.join(state)
+        },
+    ))
+}
+
+fn imported_header(input: &mut impl BufRead, id: &str) -> io::Result<Option<Value>> {
+    let mut line = Vec::new();
+    input.read_until(b'\n', &mut line)?;
+    Ok(serde_json::from_slice::<Value>(&line).ok().filter(|v| {
+        v["type"] == "session_meta"
+            && v["payload"]["id"] == id
+            && v["payload"]["originator"] == "markcraft"
+    }))
+}
+
+// Repair only MarkCraft imports. Hold a handle denying writers while copying the
+// untouched suffix, so a native follow-up cannot race the atomic replacement.
+pub(super) fn repair_import(path: &Path, id: &str, home: &Path) -> io::Result<()> {
+    let Some(header) = imported_header(&mut BufReader::new(File::open(path)?), id)? else {
+        return Ok(());
+    };
+    let (configured, state) = settings(home)?;
+    let provider = |v: &Value| {
+        v["payload"]["model_provider"]
+            .as_str()
+            .filter(|s| !s.trim().is_empty())
+            .map(str::to_owned)
+    };
+    let actual = if let Some(value) = provider(&header) {
+        value
+    } else {
+        let file = OpenOptions::new()
+            .read(true)
+            .share_mode(windows_sys::Win32::Storage::FileSystem::FILE_SHARE_DELETE)
+            .open(path)
+            .map_err(|e| {
+                io::Error::other(format!(
+                    "无法独占旧会话以补全提供商，请关闭该对话后重试。{e}"
+                ))
+            })?;
+        let mut input = BufReader::new(file);
+        let mut header = imported_header(&mut input, id)?
+            .ok_or_else(|| io::Error::other("会话已更换，请刷新资料库。"))?;
+        if let Some(value) = provider(&header) {
+            value
+        } else {
+            header["payload"]["model_provider"] = json!(configured);
+            let mut stage = tempfile::NamedTempFile::new_in(path.parent().unwrap())?;
+            serde_json::to_writer(&mut stage, &header)?;
+            stage.write_all(b"\n")?;
+            io::copy(&mut input, &mut stage)?;
+            stage
+                .as_file()
+                .set_modified(input.get_ref().metadata()?.modified()?)?;
+            stage.as_file().sync_all()?;
+            let stage = stage.into_temp_path();
+            let wide = |p: &Path| {
+                p.as_os_str()
+                    .encode_wide()
+                    .chain(Some(0))
+                    .collect::<Vec<_>>()
+            };
+            // MoveFileEx cannot replace an open destination. ReplaceFileW can
+            // replace it while our handle keeps competing appenders out.
+            let ok = unsafe {
+                windows_sys::Win32::Storage::FileSystem::ReplaceFileW(
+                    wide(path).as_ptr(),
+                    wide(&stage).as_ptr(),
+                    std::ptr::null(),
+                    0,
+                    std::ptr::null(),
+                    std::ptr::null(),
+                )
+            };
+            if ok == 0 {
+                return Err(io::Error::last_os_error());
+            }
+            configured
+        }
+    };
+    // A desktop client may already have indexed the old header. Reconcile an
+    // empty cache entry on retry even if the rollout repair finished earlier.
+    super::metadata::fill_codex_provider(&state.join("state_5.sqlite"), id, &actual)
+}
 
 fn record(file: &mut File, timestamp: &str, kind: &str, payload: Value) -> io::Result<()> {
     serde_json::to_writer(
@@ -88,7 +221,7 @@ pub(super) fn copy(history: &Snapshot<'_>, cwd: &str, home: &Path) -> io::Result
             &stamp,
             "session_meta",
             json!({"id":id,"timestamp":stamp,"cwd":cwd,
-            "originator":"markcraft","cli_version":env!("CARGO_PKG_VERSION"),"source":"cli"}),
+            "originator":"markcraft","cli_version":env!("CARGO_PKG_VERSION"),"source":"cli","model_provider":settings(home)?.0}),
         )?;
         let mut turn = String::new();
         for (i, msg) in history.messages.iter().enumerate() {
@@ -142,6 +275,9 @@ pub(super) fn copy(history: &Snapshot<'_>, cwd: &str, home: &Path) -> io::Result
         )?;
         Ok(())
     })?;
+    if existing {
+        repair_import(&dst, &id, home)?;
+    }
     index_title(home, &id, &title)?;
     Ok(
         json!({"id":id,"title":title,"workspace":cwd,"count":history.messages.len(),"existing":existing,"recipient":"codex"}),

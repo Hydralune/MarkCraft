@@ -1134,6 +1134,7 @@ dependencies = [
  "tao",
  "tempfile",
  "time",
+ "toml",
  "url",
  "webview2-com",
  "windows",

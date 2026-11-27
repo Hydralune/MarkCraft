@@ -93,6 +93,8 @@
 .chat-items {margin-left:20px;padding-left:8px;border-left:1px solid var(--edge)}
 .chat-group .chat-group .chat-items {margin-left:12px}
 .chat-branch.project {min-height:35px;padding:5px 9px 5px 6px;gap:7px}
+.chat-branch.project .chat-label,.chat-subtitle {white-space:normal;overflow-wrap:anywhere}
+.chat-subtitle {user-select:text}
 .chat-branch .chat-chevron {width:11px;height:11px;transform-origin:center;transition:transform .2s cubic-bezier(.2,.7,.2,1)}
 .chat-item {display:flex;align-items:center;gap:8px;padding:6px 8px;min-height:33px}
 .chat-item .ui-icon {width:14px;height:14px;color:var(--muted)}

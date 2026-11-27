@@ -2,6 +2,7 @@
 use std::{
     collections::HashMap,
     ffi::{CStr, CString, c_char, c_int, c_void},
+    io,
     path::Path,
     ptr,
 };
@@ -15,15 +16,14 @@ unsafe extern "C" {
         vfs: *const c_char,
     ) -> c_int;
     fn sqlite3_close(db: *mut c_void) -> c_int;
+    fn sqlite3_busy_timeout(db: *mut c_void, ms: c_int) -> c_int;
+    fn sqlite3_errmsg(db: *mut c_void) -> *const c_char;
     fn sqlite3_exec(
         db: *mut c_void,
         sql: *const c_char,
-        visit: unsafe extern "C" fn(
-            *mut c_void,
-            c_int,
-            *mut *mut c_char,
-            *mut *mut c_char,
-        ) -> c_int,
+        visit: Option<
+            unsafe extern "C" fn(*mut c_void, c_int, *mut *mut c_char, *mut *mut c_char) -> c_int,
+        >,
         ctx: *mut c_void,
         error: *mut *mut c_char,
     ) -> c_int;
@@ -118,11 +118,52 @@ pub(super) fn antigravity(path: &Path) -> Titles {
     unsafe {
         if sqlite3_open_v2(name.as_ptr(), &mut db, 1, ptr::null()) == 0 {
             sqlite3_exec(db, c"SELECT conversation_id,title,workspace_uris,project_id FROM conversation_summaries".as_ptr(),
-                row, (&mut titles as *mut Titles).cast(), ptr::null_mut());
+                Some(row), (&mut titles as *mut Titles).cast(), ptr::null_mut());
         }
         if !db.is_null() {
             sqlite3_close(db);
         }
     }
     titles
+}
+
+pub(super) fn fill_codex_provider(path: &Path, id: &str, provider: &str) -> io::Result<()> {
+    if !path.try_exists()? {
+        return Ok(());
+    }
+    if !super::launch::valid_uuid(id) {
+        return Err(io::Error::other("无效的 Codex 会话 ID。"));
+    }
+    let path = CString::new(path.to_string_lossy().as_bytes())?;
+    let sql = CString::new(format!(
+        "UPDATE threads SET model_provider='{}' WHERE id='{id}' AND (model_provider='' OR model_provider IS NULL)",
+        provider.replace('\'', "''")
+    ))?;
+    let mut db = ptr::null_mut();
+    unsafe {
+        let mut rc = sqlite3_open_v2(
+            path.as_ptr(),
+            &mut db,
+            2, /* READWRITE, never CREATE */
+            ptr::null(),
+        );
+        if rc == 0 {
+            sqlite3_busy_timeout(db, 2500);
+            rc = sqlite3_exec(db, sql.as_ptr(), None, ptr::null_mut(), ptr::null_mut());
+        }
+        let failure = (rc != 0).then(|| {
+            let detail = if db.is_null() {
+                format!("SQLite {rc}")
+            } else {
+                CStr::from_ptr(sqlite3_errmsg(db))
+                    .to_string_lossy()
+                    .into_owned()
+            };
+            io::Error::other(format!("Codex 会话索引暂时无法同步，请稍后重试。{detail}"))
+        });
+        if !db.is_null() {
+            sqlite3_close(db);
+        }
+        failure.map_or(Ok(()), Err)
+    }
 }

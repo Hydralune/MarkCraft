@@ -147,7 +147,7 @@ impl Roots {
             Source::DeepSeek => &mut self.dsh,
         }
     }
-    fn path(&self, s: Source) -> &Path {
+    pub(super) fn path(&self, s: Source) -> &Path {
         match s {
             Source::Codex => &self.codex,
             Source::Claude => &self.claude,

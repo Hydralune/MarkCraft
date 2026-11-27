@@ -490,10 +490,16 @@ window.chatExplorer = (() => {
       if(shortcut)b.append(el("kbd","",shortcut));menu.append(b);
     };
     if(item){
+      option(item.source==="codex"?"在 Codex 窗口打开":item.source==="claude"?"在 Claude Code 窗口打开":"在智能体终端窗口打开","",()=>post("chatOpenNative",{arg:item.id}));
       option("接续到…","",()=>chooseTarget(item));
       option("重命名","F2",()=>renameChat(item));
       option("复制对话","Ctrl+C",()=>copyChat(item));
     }
+    const project=item?.project || dest?.path;
+    if(absoluteFolder(project))option("复制工作目录","",async()=>{
+      try{await navigator.clipboard.writeText(project);notice("已复制工作目录");}
+      catch{notice("无法访问剪贴板，可在阅读区选择并复制路径。");}
+    });
     if(dest)option("粘贴为接续会话","Ctrl+V",()=>pasteChat(dest));
     document.body.append(menu);context={menu,row};
     const bounds=row.getBoundingClientRect(),x=e.clientX||bounds.left,y=e.clientY||bounds.bottom;
@@ -542,7 +548,7 @@ window.chatExplorer = (() => {
         for(const t of destinations)if(!grouped.has(t.path))grouped.set(t.path,[]);
         reconcile(projects,[...grouped],([project])=>project,(projectRow,[project,chats])=>{
           const key=JSON.stringify([src.key,project]);
-          return group(projectRow,key,leaf(project),()=>toolIcon("folder"),"project",chats.length,project,list=>{
+          return group(projectRow,key,project,()=>toolIcon("folder"),"project",chats.length,project,list=>{
             reconcile(list,chats,c=>c.id,(chatRow,item)=>{
               if(!chatRow){
                 chatRow=button("chat-item","",()=>openChat(chatRow.chat));
@@ -567,7 +573,7 @@ window.chatExplorer = (() => {
     const list=el("div","chat-recents");
     for(const item of entries.slice(0,12)){
       const src=sourceOf(item),b=button("chat-recent","",()=>openChat(item)),body=el("span","chat-recent-body");
-      body.append(el("strong","",item.title),el("small","",src.name+" · "+leaf(item.project)));
+      body.append(el("strong","",item.title),el("small","",src.name+" · "+item.project));b.title=item.project;
       b.chat=item;b.append(mark(src),body,el("time","",dateOf(item.modified/1000)));list.append(b);
     }
     if(!entries.length)list.append(el("p","chat-empty",scanning?"正在查找本机记录…":"暂无对话。请在「管理来源」选择记录目录，或先在智能体中创建一段对话。"));
@@ -575,8 +581,8 @@ window.chatExplorer = (() => {
   }
   function updateHeading(item){
     transfer.hidden=false;
-    const src=sourceOf(item);title.textContent=mode==="markdown"?leaf(item.project):item.title;title.title=item.title;
-    subtitle.textContent=src.name+(mode==="markdown"?"":" · "+leaf(item.project))+(total?" · "+total+" 条消息":"");subtitle.title=item.project;
+    const src=sourceOf(item);title.textContent=item.title;title.title=item.title;
+    subtitle.textContent=src.name+(total?" · "+total+" 条消息":"")+" · "+item.project;subtitle.title=item.project;
     controls.hidden=false;copy.hidden=mode!=="markdown";copy.disabled=!snapshot;
     $("exportMenuButton").disabled=visible && !!pendingExport;
     document.body.classList.toggle("chat-document",visible && mode==="markdown" && !!snapshot);
@@ -621,6 +627,7 @@ window.chatExplorer = (() => {
     block.append(meta,contentBox);return block;
   }
   function receive(m){
+    if(m.kind==="chatOpenNative"){if(m.error)notice(m.error);return true;}
     if(["chatSetup","chatConfigure","chatInstallPlugin","chatFolder"].includes(m.kind)){
       if(m.rev===setupTicket && $("pop").open && $("pop").dataset.kind==="chat-setup")applySetup?.(m);
       if(m.kind==="chatConfigure" && !m.error){scanning=false;scan();}
@@ -668,8 +675,8 @@ window.chatExplorer = (() => {
             const field=el("textarea","chat-handoff-target");field.readOnly=true;field.rows=3;field.value=command;
             field.setAttribute("aria-label","恢复会话命令");body.append(field);
             modButton(actions,"关闭",()=>$("pop").close());
-            if(dest==="codex")modButton(actions,"打开 Codex",()=>post("chatOpenCodex",{arg:m.nativeId}));
-            modButton(actions,"复制命令",async()=>{try{await navigator.clipboard.writeText(command);notice("已复制命令");}catch{field.select();}},true);
+            modButton(actions,"复制命令",async()=>{try{await navigator.clipboard.writeText(command);notice("已复制命令");}catch{field.select();}});
+            modButton(actions,"在窗口打开",()=>post("chatOpenNative",{recipient:dest,arg:m.nativeId,text:"received"}),true);
           },"paper");
         }
       }

@@ -266,11 +266,6 @@ impl App {
                 }
             }
 
-            "chatOpenCodex" => {
-                let valid=arg.len()==36 && arg.bytes().enumerate().all(|(i,b)|if matches!(i,8|13|18|23){b==b'-'}else{b.is_ascii_hexdigit()});
-                if valid { open::that(format!("codex://threads/{arg}"))?; }
-            }
-
             "chatOpenAntigravity" => {
                 let exe = chat::desktop_exe();
                 if let Some(exe) = exe { std::process::Command::new(exe).spawn()?; }
@@ -281,7 +276,7 @@ impl App {
                 let folder = FileDialog::new().set_parent(win).set_title("选择智能体的记录根目录").pick_folder();
                 send(web,json!({"kind":"chatFolder","id":arg,"rev":rev,"epoch":epoch,"folder":folder}));
             }
-            "chatSetup" | "chatConfigure" | "chatInstallPlugin" | "chatIndex" | "chatRead" | "chatHandoff" | "chatRename" => {
+            "chatSetup" | "chatConfigure" | "chatInstallPlugin" | "chatIndex" | "chatRead" | "chatHandoff" | "chatRename" | "chatOpenNative" => {
                 let text = if action == "chatInstallPlugin" && text == "@pick" {
                     let Some(exe)=FileDialog::new().set_parent(win).add_filter("DeepSeek Harness", &["exe"]).pick_file() else {
                         send(web,json!({"kind":action,"cancelled":true,"epoch":epoch,"rev":rev}));return Ok(false);
