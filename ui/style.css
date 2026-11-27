@@ -137,7 +137,6 @@ input:focus-visible {
 #bar button {
   height: 28px;
   padding: 0 10px;
-  font-size: 13px;
   line-height: 1;
   color: var(--fg);
   white-space: nowrap;
@@ -155,7 +154,6 @@ input:focus-visible {
   background: var(--surface);
   border: 1px solid var(--control-edge);
   color: var(--fg);
-  font-size: 12px;
   line-height: 1;
   white-space: nowrap;
 }
@@ -184,13 +182,16 @@ input:focus-visible {
   flex-direction: column;
 }
 .tabs {
+  container: sidebar-tabs / inline-size;
   display: flex;
   align-items: center;
   gap: 5px;
   margin: 0 0 10px;
 }
 .side-switch {
-  display: flex;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   padding: 2px;
   gap: 2px;
   border: 1px solid var(--edge);
@@ -198,11 +199,27 @@ input:focus-visible {
   border-radius: 8px;
 }
 .side-switch button {
-  padding: 3px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 3px 8px;
+  white-space: nowrap;
   color: var(--muted);
   font-size: 14px;
   border: 1px solid transparent;
   border-radius: 5px;
+}
+.side-switch .ui-icon {
+  width: 15px;
+  height: 15px;
+}
+@container sidebar-tabs (max-width: 244px) {
+  .side-switch button { gap: 3px; padding-inline: 4px; }
+}
+@container sidebar-tabs (max-width: 205px) {
+  .side-switch:has(#chatTab) button { flex-direction: column; gap: 2px; padding: 4px 6px; }
 }
 .side-switch button.current {
   background: var(--surface);
@@ -220,7 +237,7 @@ input:focus-visible {
   height: 14px;
 }
 #outline,
-#files {
+#tree {
   min-height: 0;
   overflow: hidden auto;
   overscroll-behavior-y: contain;
@@ -229,7 +246,6 @@ input:focus-visible {
 }
 #outline button,
 #tree button,
-.chooseFolder,
 .recentEntry {
   display: block;
   text-align: left;
@@ -262,8 +278,7 @@ input:focus-visible {
   color: var(--ui-accent);
   background: var(--selected);
 }
-#tree button,
-.chooseFolder {
+#tree button {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -272,8 +287,7 @@ input:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-#tree .ui-icon,
-.chooseFolder .ui-icon {
+#tree .ui-icon {
   color: var(--icon-color);
   width: 15px;
   height: 15px;
@@ -293,10 +307,64 @@ input:focus-visible {
   font-size: 12px;
   padding: 5px 8px;
 }
-.chooseFolder {
-  font-size: 14px;
-  color: var(--ui-accent);
-  margin-bottom: 6px;
+#files {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  container-type: inline-size;
+}
+.folder-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--fg);
+}
+.folder-nav button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 27px;
+  padding: 4px;
+  min-height: 28px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.folder-nav button:last-child { margin-inline-start: auto; }
+.folder-nav button:disabled { opacity: .35; background: transparent; cursor: default; }
+.folder-nav .ui-icon { width: 14px; height: 14px; }
+.folder-nav .back-icon { transform: rotate(180deg); }
+#folderLocation {
+  padding: 6px 4px;
+  margin: 1px 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--edge);
+}
+#folderLocation:empty { display: none; }
+#tree { flex: 1; }
+.tree-row { display: flex; align-items: center; }
+#tree .tree-toggle {
+  flex: 0 0 22px;
+  width: 22px;
+  padding: 0;
+  height: 32px;
+  justify-content: center;
+}
+#tree .tree-entry { min-width: 0; flex: 1; padding-inline: 4px; }
+#tree .tree-entry:first-child { margin-inline-start: 22px; }
+.tree-empty {
+  padding: 7px 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+@container (max-width: 160px) {
+  .folder-nav button:last-child span { display: none; }
 }
 footer {
   height: 25px;
@@ -397,9 +465,8 @@ footer .ui-icon {
 .cm-line {
   padding: 0;
 }
-.cm-placeholder {
-  color: var(--muted);
-  opacity: 0.78;
+#write .cm-placeholder {
+  color: color-mix(in srgb, var(--ink) 60%, var(--paper));
 }
 .cm-cursor,
 .cm-dropCursor {

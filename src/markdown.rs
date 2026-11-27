@@ -280,6 +280,14 @@ pub fn image_paths(blocks: &[Block]) -> Vec<String> {
 }
 
 pub fn blocks(source: &str) -> Vec<Block> {
+    build_blocks(source, true)
+}
+
+pub(crate) fn transcript_html(source: &str) -> String {
+    build_blocks(source, false).into_iter().map(|b| b.html).collect()
+}
+
+fn parser_input(source: &str) -> (Options, Option<String>, Vec<DisplayEquation>) {
     let options = Options::ENABLE_TABLES
         | Options::ENABLE_TASKLISTS
         | Options::ENABLE_STRIKETHROUGH
@@ -302,6 +310,39 @@ pub fn blocks(source: &str) -> Vec<Block> {
         }
         Some(String::from_utf8(bytes).expect("complete equation ranges were replaced with ASCII"))
     };
+    (options, masked, equations)
+}
+
+pub(crate) fn transcript_outline(source: &str) -> Vec<(u8, String)> {
+    let (options, masked, equations) = parser_input(source);
+    let input = masked.as_deref().unwrap_or(source);
+    let mut headings = Vec::new();
+    let mut current = None;
+    for (event, range) in Parser::new_ext(input, options).into_offset_iter() {
+        match event {
+            Event::Start(Tag::Heading { level, .. }) => {
+                // Display equations use a temporary heading in the parser input.
+                if equations.binary_search_by_key(&range.start, |eq| eq.range.start).is_err() {
+                    current = Some((level as u8, String::new()));
+                }
+            }
+            Event::End(pulldown_cmark::TagEnd::Heading(_)) => {
+                if let Some(heading) = current.take() { headings.push(heading); }
+            }
+            Event::Text(t) | Event::Code(t) | Event::InlineMath(t) => {
+                if let Some((_, title)) = &mut current { title.push_str(&t); }
+            }
+            Event::SoftBreak | Event::HardBreak => {
+                if let Some((_, title)) = &mut current { title.push(' '); }
+            }
+            _ => {}
+        }
+    }
+    headings
+}
+
+fn build_blocks(source: &str, document_images: bool) -> Vec<Block> {
+    let (options, masked, equations) = parser_input(source);
     let input = masked.as_deref().unwrap_or(source);
     let mut equations = equations.into_iter().peekable();
     let mut out = Builder {
@@ -385,7 +426,17 @@ pub fn blocks(source: &str) -> Vec<Block> {
             Event::Start(Tag::Image { dest_url, .. }) => Some(dest_url.to_string()),
             _ => None,
         };
-        let safe = if let Some((src, markup)) = html_image {
+        let safe = if !document_images {
+            match event {
+                _ if html_image.is_some() => Event::Text("〔图片〕".into()),
+                Event::Start(Tag::Image { .. }) => Event::Text("〔图片：".into()),
+                Event::End(pulldown_cmark::TagEnd::Image) => Event::Text("〕".into()),
+                Event::Start(Tag::Link { ref dest_url, .. })
+                    if !["https://", "http://", "mailto:", "#"].iter().any(|s| dest_url.starts_with(s)) =>
+                        Event::InlineHtml("<a>".into()),
+                other => safe_event(other),
+            }
+        } else if let Some((src, markup)) = html_image {
             path = Some(src);
             Event::InlineHtml(markup.into())
         } else {

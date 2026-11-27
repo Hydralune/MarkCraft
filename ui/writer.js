@@ -462,7 +462,9 @@ function decorations(s) {
   let blockIndex = 0;
   for (let i = 1; i <= s.doc.lines; i++) {
     const line = s.doc.line(i);
-    if (!raw && !line.length) lines.set(line.from, (lines.get(line.from) || "") + " md-blank-line");
+    if (!raw && s.doc.length > 0 && !line.length) {
+      lines.set(line.from, (lines.get(line.from) || "") + " md-blank-line");
+    }
     while (blockIndex < covered.length && covered[blockIndex].end <= line.from)
       blockIndex++;
     if (

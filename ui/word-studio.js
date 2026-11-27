@@ -303,9 +303,9 @@ const wordStudio = (() => {
     s.observer.disconnect();
     post("wordClose", { rev: s.id });
   }
-  function open() {
+  function open(snapshot = null) {
     close();
-    const s = { id: ++serial, cards: new Map(), rev: 0, ready: false, wide: false };
+    const s = { snapshot, id: ++serial, cards: new Map(), rev: 0, ready: false, wide: false };
     session = s;
     modal(
       "导出 Word",
@@ -343,7 +343,7 @@ const wordStudio = (() => {
         };
         bar.append(
           make("h3", "word-label", "首页预览"),
-          make("span", "word-filename", doc.title),
+          make("span", "word-filename", snapshot?.title || doc.title),
           zoom,
         );
         s.stage = make("div", "word-stage");
@@ -381,7 +381,7 @@ const wordStudio = (() => {
           () => {
             if (s.ready) {
               s.save.disabled = true;
-              post("wordSave", { rev: s.rev });
+              post("wordSave", { rev: s.rev, chatTitle: s.snapshot?.title });
             }
           },
           true,
@@ -394,7 +394,8 @@ const wordStudio = (() => {
       "paper",
       "word",
     );
-    req("wordBegin", "", s.id);
+    if (snapshot) post("wordBegin", {rev: s.id, text: snapshot.sections.join("\n"), chatTitle: snapshot.title});
+    else req("wordBegin", "", s.id);
   }
   function receive(msg) {
     const s = session;
@@ -409,7 +410,7 @@ const wordStudio = (() => {
       for (const k of Object.keys(presets))
         if (k !== "personal" || msg.personal) sampleCard(s, k);
       const frag = document.createDocumentFragment();
-      for (const b of msg.blocks) {
+      for (const b of s.snapshot ? s.snapshot.sections.slice(0,48).map(html => ({html})) : msg.blocks) {
         const t = document.createElement("template");
         t.innerHTML = b.html;
         for (const el of t.content.querySelectorAll("[id]"))

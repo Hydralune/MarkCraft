@@ -1,6 +1,6 @@
 # MarkCraft
 
-MarkCraft 是一款用 **Rust 构建、免费开源**的 Windows 本地 Markdown 编辑器。打开 `.md` 文件就能在排好版的正文里写作。改表格时直接点单元格，改公式时点公式，想看整篇 Markdown 时按 `Ctrl + /`。文稿以普通文本保存在自己的电脑上。
+MarkCraft 是一款用 **Rust 构建、免费开源**的 Windows 本地 Markdown 编辑器。打开 `.md` 文件就能在排好版的正文里写作。改表格时直接点单元格，改公式时点公式，想看整篇 Markdown 时按 `Ctrl + /`。文稿以普通文本保存在自己的电脑上。内置的对话资料库也能按项目整理本机智能体的原话，并把对话接续到另一款智能体。
 
 **[下载 Windows x64 便携版](https://github.com/Hydralune/MarkCraft/releases/latest)** · [打开示例文稿](examples/城市雨量观测手记.md) · [使用指南](ui/guide.md) · [MIT 许可证](LICENSE)
 
@@ -8,7 +8,7 @@ MarkCraft 是一款用 **Rust 构建、免费开源**的 Windows 本地 Markdown
 
 ## 开始使用
 
-1. 在发行页下载 `MarkCraft-v0.3.0-windows-x64.zip`，将**整个文件夹**解压到希望长期使用的位置。
+1. 在发行页下载 `MarkCraft-v0.4.0-windows-x64.zip`，将**整个文件夹**解压到希望长期使用的位置。
 2. 双击 `MarkCraft.exe`。按 `Ctrl + O` 打开自己的文稿，或打开包内的 `examples/城市雨量观测手记.md` 体验上图中的排版。
 3. 如果希望双击 Markdown 文件就用 MarkCraft 打开，在解压目录的 PowerShell 里运行下面的命令，再到资源管理器的「打开方式」中选择 MarkCraft 并设为默认。注册只对当前 Windows 用户生效，也会提供 Markdown 文档图标。
 
@@ -17,6 +17,14 @@ MarkCraft 是一款用 **Rust 构建、免费开源**的 Windows 本地 Markdown
 ```
 
 桌面版使用系统的 Microsoft Edge WebView2。若启动时提示缺少运行时，可安装微软提供的 Evergreen Runtime。移动便携目录后，再运行一次上面的注册命令即可更新路径。[微软 WebView2 下载页](https://developer.microsoft.com/en-us/microsoft-edge/webview2/)
+
+## 对话资料库
+
+从「视图 → 对话资料库」首次进入时，选择允许读取的本机来源并保存。左侧按智能体和项目展开会话，同一份大纲可在原话和 Markdown 视图间跳转。Markdown 可另存为文件，也可使用文稿的 PDF、Word 和其他导出格式。
+
+将会话拖到另一个智能体的工作区，就能用已有的对话原文继续任务。右上角「接续…」可改名或指定目录。支持 Codex、Claude Code、DeepSeek Harness，以及符合版本要求的 Antigravity 桌面端和 CLI。Harness 接收端的插件随便携包提供，可在「管理来源」安装。自选记录目录、权限撤回、原厂客户端下载及兼容要求见[首次配置与接续指南](docs/对话资料库.md)。
+
+![MarkCraft 首次打开对话资料库的来源选择与授权界面](docs/images/chat-setup.png)
 
 ## 写作与整理
 
@@ -47,7 +55,7 @@ MarkCraft 是一款用 **Rust 构建、免费开源**的 Windows 本地 Markdown
 
 ## 体积与实测内存
 
-v0.3.0 的 Windows x64 便携包为 **3.28 MiB**，包含程序、加载器、使用指南、示例和许可证。主程序为 **8.23 MiB**。MarkCraft 复用系统 WebView2。Rust 负责窗口、文件读写、Markdown 解析、公式转换与导出，CodeMirror 6 负责文本编辑和输入法。
+v0.4.0 的 Windows x64 便携包约 **3.55 MiB**，包含程序、加载器、接续插件、离线指南、示例和许可证。主程序约 **8.97 MiB**。MarkCraft 复用系统 WebView2。Rust 负责窗口、文件读写、Markdown 解析、公式转换与导出，CodeMirror 6 负责文本编辑和输入法。
 
 | v0.2.0 单窗口内存基准 | 整个进程树的专用工作集，中位数 | 五次实测范围 | 其中 Rust 主进程，中位数 |
 | --- | ---: | ---: | ---: |
@@ -77,6 +85,8 @@ cd ..
 
 主题源文件位于 `themes/`。在程序的「主题」菜单打开主题目录，可编辑当前用户使用的 CSS，再从菜单重新载入。
 
+在 Windows x64 GNU 工具链和 npm 环境中，运行 `.\package-windows.ps1` 可重新构建便携包和 SHA-256 校验文件，输出到 `dist/`。只需重建接续插件时，可从仓库根目录运行 `npm pack ./integrations/deepseek-handoff`，将生成的 tgz 放到 MarkCraft.exe 旁。
+
 ## 开源许可
 
-MarkCraft 采用 MIT 许可证，允许免费使用、修改和分发。编辑器使用 CodeMirror 6、pulldown-cmark、highlight.js、Mermaid 和 latex2mathml 等组件。Claudette 亮暗主题改编自 CookPiu 的作品。第三方组件保留各自的许可和署名，便携包的 `licenses/` 目录提供对应文本。[项目许可证](LICENSE) · [编辑器及渲染组件许可](vendor/) · [Claudette 主题许可](themes/Claudette-LICENSE.txt)
+各智能体的品牌图标取自原厂应用或扩展，归各自权利人所有。MarkCraft 采用 MIT 许可证，允许免费使用、修改和分发。编辑器使用 CodeMirror 6、pulldown-cmark、highlight.js、Mermaid 和 latex2mathml 等组件。Claudette 亮暗主题改编自 CookPiu 的作品。第三方组件保留各自的许可和署名，便携包的 `licenses/` 目录提供对应文本。[项目许可证](LICENSE) · [编辑器及渲染组件许可](vendor/) · [Claudette 主题许可](themes/Claudette-LICENSE.txt)

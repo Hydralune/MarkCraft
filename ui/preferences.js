@@ -106,10 +106,15 @@ function openSettings() {
           ],
         ],
       ];
+      sections.push(["对话", []]);
       const show = (tab, rows) => {
         for (const b of tabs.children)
           b.setAttribute("aria-pressed", String(b === tab));
         panel.replaceChildren(node("h3", tab.textContent));
+        if(tab.textContent==="对话"){
+          panel.append(node("p","管理本机对话的读取权限、记录目录和接续插件。"));
+          modButton(panel,"管理对话来源",()=>window.chatExplorer.openSetup());return;
+        }
         for (const [label, key, note] of rows) {
           const row = node("label");
           row.className = "setting-row";

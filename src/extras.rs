@@ -115,11 +115,26 @@ pub fn children(root: &Path, path: &Path) -> io::Result<Value> {
         json!({"kind":"children","root":root,"parent":path,"entries":entries.into_iter().map(|x|x.2).collect::<Vec<_>>()}),
     )
 }
-pub fn output(win: &Window, document: Option<&Path>, ext: &str) -> Option<PathBuf> {
+fn chat_filename(title: &str) -> String {
+    let name: String = title.chars().take(80).map(|c| {
+        if c.is_control() || r#"<>:"/\|?*"#.contains(c) { '_' } else { c }
+    }).collect();
+    let name = name.trim_matches([' ', '.']);
+    if name.is_empty() { return "AI 对话".into(); }
+    let device = name.split('.').next().unwrap_or("").to_ascii_uppercase();
+    if ["CON","PRN","AUX","NUL"].contains(&device.as_str()) || ((device.starts_with("COM") || device.starts_with("LPT")) && device.len()==4) {
+        return format!("_{name}");
+    }
+    name.into()
+}
+
+pub fn output(win: &Window, document: Option<&Path>, ext: &str, chat_title: Option<&str>) -> Option<PathBuf> {
+    let document = document.filter(|_| chat_title.is_none());
+    let chat_stem = chat_title.map(chat_filename);
     let stem = document
         .and_then(Path::file_stem)
         .and_then(|x| x.to_str())
-        .unwrap_or("未命名");
+        .or(chat_stem.as_deref()).unwrap_or("未命名");
     let mut dlg = FileDialog::new()
         .set_parent(win)
         .set_title(format!("导出为 {}", ext.to_uppercase()))
@@ -221,9 +236,14 @@ fn configure_word(cmd: &mut Command, personal: Option<&Path>) -> io::Result<temp
     Ok(assets)
 }
 
+pub enum ConversionInput {
+    Markdown(Option<PathBuf>),
+    TranscriptHtml(String),
+}
+
 pub fn convert(
     text: &str,
-    folder: Option<&Path>,
+    input: &ConversionInput,
     format: &str,
     dest: &Path,
     reference: Option<&Path>,
@@ -237,13 +257,22 @@ pub fn convert(
     let _word_assets = (format == "docx")
         .then(|| configure_word(&mut cmd, reference))
         .transpose()?;
-    if let Some(dir) = folder {
-        cmd.current_dir(dir);
-    }
+    let reader = match input {
+        ConversionInput::Markdown(folder) => {
+            if let Some(dir) = folder { cmd.current_dir(dir); }
+            "markdown+tex_math_dollars"
+        }
+        ConversionInput::TranscriptHtml(title) => {
+            if format == "epub" {
+                cmd.arg("--metadata").arg(format!("title={title}"));
+            }
+            "html"
+        }
+    };
     cmd.creation_flags(0x08000000)
         .args([
             "--from",
-            "markdown+tex_math_dollars",
+            reader,
             "--to",
             format,
             "--standalone",

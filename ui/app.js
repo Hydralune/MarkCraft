@@ -293,6 +293,7 @@ function setTheme(msg) {
   }
 }
 function setDoc(msg) {
+  if (window.chatExplorer?.isReading) sidebar("files");
   if ($("pop").open && $("pop").dataset.kind === "word") $("pop").close();
   dirtySince = 0;
   collectRevision = null;
@@ -314,14 +315,14 @@ function setDoc(msg) {
     path: msg.path || "",
     recent: msg.recent || [],
     blocks: msg.blocks,
-    root: msg.root || "",
     dirty: false,
     source: false,
   });
   parsedRevision = doc.rev;
   wordTotal = countWords(doc.text);
   document.body.classList.remove("source");
-  treeCache.clear();
+  setTreeRoot(msg.root);
+  drawTree();
   writer.reset(doc.text, doc.blocks);
   status();
   outline();
@@ -350,7 +351,18 @@ function bindOutlineScroll() {
 }
 $("outlineFilter").addEventListener("input", outline);
 function outline() {
-  const dest = $("outline"), headings = doc.blocks.filter(b => b.heading);
+  if (prefs.side === "chatOutline") {
+    window.chatExplorer.drawOutline();
+    return;
+  }
+  renderOutlineList(doc.blocks.filter(b => b.heading), foldedHeadings,
+    b => writer.select(b.start, b.start, "start"), "文稿中的标题会显示在这里");
+  if (prefs.side === "outline") {
+    if (setting("follow")) followOutline(); else markOutlinePosition(writer.selection().head);
+  }
+}
+function renderOutlineList(headings, folded, choose, empty) {
+  const dest = $("outline");
   const query = $("outlineFilter").value.trim().toLocaleLowerCase();
   const keep = new Set(), parents = [];
   const items = headings.map(b => {
@@ -364,17 +376,17 @@ function outline() {
   });
   const fragment = document.createDocumentFragment();
   items.forEach(({b, ancestors}, index) => {
-    if (query ? !keep.has(b.id) : ancestors.some(h => foldedHeadings.has(h.id))) return;
+    if (query ? !keep.has(b.id) : ancestors.some(h => folded.has(h.id))) return;
     const row = node("div"); row.className = "outline-row";
     row.style.paddingInlineStart = Math.min(5, ancestors.length) * 12 + "px";
     if (headings[index+1]?.level > b.level) {
-      const fold = node("button", "›"), open = !!query || !foldedHeadings.has(b.id);
+      const fold = node("button", "›"), open = !!query || !folded.has(b.id);
       fold.type = "button"; fold.className = "outline-fold";
       fold.setAttribute("aria-expanded", String(open));
       fold.setAttribute("aria-label", (open ? "折叠 " : "展开 ") + b.heading);
       fold.disabled = !!query;
       fold.onclick = () => {
-        if (open) foldedHeadings.add(b.id); else foldedHeadings.delete(b.id);
+        if (open) folded.add(b.id); else folded.delete(b.id);
         outline();
         dest.querySelector(`[data-pos="${b.start}"]`)?.previousElementSibling?.focus({preventScroll:true});
       };
@@ -382,32 +394,34 @@ function outline() {
     } else row.append(Object.assign(node("span"), {className:"outline-spacer"}));
     const el = node("button"); el.append(node("span", b.heading));
     el.title = b.heading; el.dataset.pos = b.start; el.dataset.depth = ancestors.length;
-    el.onclick = () => writer.select(b.start, b.start, "start");
+    el.onclick = () => choose(b);
     row.append(el); fragment.append(row);
   });
   if (!fragment.childNodes.length) {
-    const note = node("p", query ? "没有匹配的标题" : "文稿中的标题会显示在这里");
+    const note = node("p", query ? "没有匹配的标题" : empty);
     note.className = "small"; fragment.append(note);
   }
   dest.replaceChildren(fragment);
-  if (prefs.side === "outline") {
-    if (setting("follow")) followOutline(); else markOutlinePosition(writer.selection().head);
-  }
 }
 function showSidebar(which) {
+  const old = prefs.side;
   prefs.side = which;
+  window.chatExplorer?.switchSide(which, old);
+  const outlineVisible = which === "outline" || which === "chatOutline";
   $("sidebarButton").setAttribute("aria-expanded", String(!!which));
   $("side").hidden = !which;
-  $("outlineFilter").hidden = which !== "outline";
+  $("outlineFilter").hidden = !outlineVisible;
   $("files").hidden = which !== "files";
-  $("outline").hidden = which !== "outline";
+  $("outline").hidden = !outlineVisible;
   $("filesTab").classList.toggle("current", which === "files");
-  $("outlineTab").classList.toggle("current", which === "outline");
+  $("outlineTab").classList.toggle("current", outlineVisible);
+  $("filesTab").setAttribute("aria-pressed", String(which === "files"));
+  $("outlineTab").setAttribute("aria-pressed", String(outlineVisible));
 }
 function sidebar(which) {
   showSidebar(which);
   if (which === "files" && doc.root) post("children");
-  if (which === "outline") outline();
+  if (which === "outline" || which === "chatOutline") outline();
   writer.view.requestMeasure();
 }
 function toolIcon(name, extraClass = "") {
@@ -420,38 +434,73 @@ function toolIcon(name, extraClass = "") {
   svg.append(use);
   return svg;
 }
+function setTreeRoot(path) {
+  path = path || "";
+  if (doc.root === path) return;
+  doc.root = path;
+  treeCache.clear();
+  $("tree").scrollTop = 0;
+  for (const id of ["folderBack", "folderForward", "folderUp"]) $(id).disabled = true;
+}
 function drawTree() {
   const dest = $("tree");
+  const previous = dest.contains(document.activeElement) ? document.activeElement : null;
+  let refocus;
+  const location = $("folderLocation");
+  location.textContent = doc.root.split(/[\\/]/).filter(Boolean).pop() || "";
+  if (/^[A-Za-z]:$/.test(location.textContent)) location.textContent = doc.root;
+  location.title = doc.root;
   dest.replaceChildren();
   function branch(path, depth) {
     for (const e of treeCache.get(path) || []) {
+      const row = node("div");
+      row.className = "tree-row";
+      row.style.paddingInlineStart = depth * 12 + "px";
       const el = node("button");
       if (e.dir) {
-        el.setAttribute("aria-expanded", String(treeCache.has(e.path)));
-        el.append(toolIcon("chevron", "tree-chevron"));
-      } else if (e.path === doc.path) el.setAttribute("aria-current", "page");
+        const toggle = node("button");
+        const open = treeCache.has(e.path);
+        toggle.className = "tree-toggle";
+        toggle.dataset.path = e.path;
+        toggle.setAttribute("aria-expanded", String(open));
+        toggle.setAttribute("aria-label", (open ? "收起 " : "展开 ") + e.name);
+        toggle.title = toggle.getAttribute("aria-label");
+        toggle.append(toolIcon("chevron", "tree-chevron"));
+        toggle.onclick = () => {
+          if (treeCache.delete(e.path)) drawTree();
+          else post("children", { arg: e.path });
+        };
+        row.append(toggle);
+        if (previous?.className === toggle.className && previous.dataset.path === e.path) refocus = toggle;
+      } else if (e.path.toLowerCase() === doc.path.toLowerCase()) el.setAttribute("aria-current", "page");
+      el.className = "tree-entry";
+      el.dataset.path = e.path;
       const label = node("span", e.name);
       label.className = "tree-name";
       el.append(toolIcon(e.dir ? "folder" : "paper"), label);
-      el.title = e.path;
-      el.style.paddingLeft = (e.dir ? 2 : 19) + depth * 12 + "px";
-      el.onclick = () => {
-        if (!e.dir) {
-          req("workspaceFile", e.path);
-          return;
-        }
-        if (treeCache.has(e.path)) {
-          treeCache.delete(e.path);
-          drawTree();
-        } else post("children", { arg: e.path });
-      };
-      dest.append(el);
+      el.title = e.dir ? "进入文件夹 · " + e.path : e.path;
+      el.onclick = () => e.dir ? post("folderEnter", { arg: e.path }) : req("workspaceFile", e.path);
+      if (previous?.className === el.className && previous.dataset.path === e.path) refocus = el;
+      row.append(el);
+      dest.append(row);
       if (e.dir && treeCache.has(e.path)) branch(e.path, depth + 1);
+      if (e.dir && treeCache.get(e.path)?.length === 0) empty(depth + 1);
     }
   }
-  if (doc.root) branch(doc.root, 0);
+  function empty(depth) {
+    const item = node("div", "没有子文件夹或文稿");
+    item.className = "tree-empty";
+    item.style.paddingInlineStart = (22 + depth * 12) + "px";
+    dest.append(item);
+  }
+  if (doc.root) {
+    branch(doc.root, 0);
+    if (treeCache.get(doc.root)?.length === 0) empty(0);
+  } else dest.append(Object.assign(node("div", "打开文件夹即可浏览文稿。"), {className: "tree-empty"}));
+  refocus?.focus({preventScroll:true});
 }
 function closeMenu() {
+  $("chatExport")?.setAttribute("aria-expanded","false");
   menuKey = "";
   $("menu").hidden = true;
   $("bar")
@@ -535,6 +584,7 @@ const menus = {
     item("脚注", "footnote"),
   ],
   视图: () => [
+    item("对话资料库", "chatLibrary"),
     item("文档大纲", "outline", "Ctrl Shift 1"),
     item("文件树", "files", "Ctrl Shift 3"),
     item("切换侧栏", "toggleSide", "Ctrl Shift L"),
@@ -890,7 +940,8 @@ function setExport(b) {
   exporting = b;
   document.body.classList.toggle("exporting", b);
 }
-async function drawExport(msg) {
+async function drawExport(msg, snapshot = null) {
+  const save = (action, arg) => snapshot ? post(action, {arg, chatTitle: snapshot.title}) : req(action, arg);
   const target = $("printPage");
   target.replaceChildren();
   for (const b of msg.blocks) {
@@ -906,7 +957,7 @@ async function drawExport(msg) {
   // Diagram layout needs a measurable surface even before print media is activated.
   $("printRoot").classList.add("preparing");
   try {
-    await typeset(target, diagramPalette(true));
+    await typeset(target, diagramPalette(true), !snapshot);
     await document.fonts.ready;
     await Promise.all(
       [...target.querySelectorAll("img")].map(async (img) => {
@@ -937,12 +988,13 @@ async function drawExport(msg) {
           reader.readAsDataURL(blob);
         });
       }
-      const single = document.implementation.createHTMLDocument(doc.title);
+      const single = document.implementation.createHTMLDocument(snapshot?.title || doc.title);
       single.documentElement.lang = "zh-CN";
+      if (document.body.classList.contains("lucid")) single.body.classList.add("lucid");
       single.head.prepend(Object.assign(node("meta"), { charset: "utf-8" }));
       const style = node("style");
       style.textContent =
-        document.querySelector("head style").textContent +
+        $("appStyles").textContent +
         $("documentTheme").textContent +
         "html,body{display:block;height:auto}.docTheme{min-height:100vh}.prose{max-width:var(--measure);padding:42px 28px;margin:auto}@media print{body>main.docTheme{display:block!important}}";
       single.head.append(style);
@@ -953,8 +1005,8 @@ async function drawExport(msg) {
       a.classList.add("export-document");
       main.append(a);
       single.body.append(main);
-      req("exportHtml", "<!doctype html>\n" + single.documentElement.outerHTML);
-    } else req("exportPdf", setting("paper"));
+      save("exportHtml", "<!doctype html>\n" + single.documentElement.outerHTML);
+    } else save("exportPdf", setting("paper"));
   } catch (e) {
     setExport(false);
     notice("导出失败：" + e.message);
@@ -962,23 +1014,28 @@ async function drawExport(msg) {
     $("printRoot").classList.remove("preparing");
   }
 }
-function exportDoc(format) {
+function exportDoc(format, snapshot = null) {
   if (exporting) {
     notice("正在导出，请稍候。");
     return;
   }
   if (format === "docx") {
-    wordStudio.open();
+    wordStudio.open(snapshot);
     return;
   }
   setExport(true);
   formatJob = format;
   if (["exportHtml", "exportPdf", "print"].includes(format)) {
-    post("render", { rev: ++exportRev + 1e9, text: doc.text });
+    if (snapshot) void drawExport({blocks: snapshot.sections.map(html => ({html}))}, snapshot);
+    else post("render", { rev: ++exportRev + 1e9, text: doc.text });
+  } else if (snapshot) {
+    post(format, {text: format === "exportMarkdown" ? snapshot.text : snapshot.sections.join("\n"), chatTitle: snapshot.title});
   } else req(format);
 }
 function act(cmd) {
   if (!cmd) return false;
+  if (window.chatExplorer?.isReading && window.chatExplorer.command(cmd)) return true;
+  if (window.chatExplorer?.isReading && !["outline","files","toggleSide","hideSide","close"].includes(cmd)) return false;
   if (MarkWriter.cellCommand(cmd)) {
     closeMenu();
     return true;
@@ -1086,7 +1143,12 @@ function act(cmd) {
       writer.raw(doc.source);
       status();
       break;
+    case "chatLibrary":
+      sidebar("chats"); break;
     case "outline":
+      if (window.chatExplorer?.isReading) sidebar("chatOutline");
+      else sidebar(prefs.side === "outline" ? "" : "outline");
+      break;
     case "files":
       sidebar(prefs.side === cmd ? "" : cmd);
       break;
@@ -1094,7 +1156,7 @@ function act(cmd) {
       sidebar("");
       break;
     case "toggleSide":
-      sidebar(prefs.side ? "" : "outline");
+      sidebar(prefs.side ? "" : window.chatExplorer?.restoreSide || "outline");
       break;
     case "focus":
     case "typewriter":
@@ -1129,6 +1191,11 @@ function act(cmd) {
     case "folder":
     case "import":
       req(cmd);
+      break;
+    case "folderBack":
+    case "folderForward":
+    case "folderUp":
+      post(cmd);
       break;
     case "imagePick":
       req(cmd, setting("imageMode"));
@@ -1229,6 +1296,7 @@ function prepareBlocks(blocks) {
 }
 window.pickReplacementImage = (id) => post("replaceImageFile", { rev: id });
 window.craftReceive = (msg) => {
+  if (window.chatExplorer?.receive(msg)) return;
   if (msg.blocks) prepareBlocks(msg.blocks);
   switch (msg.kind) {
     case "wordSource":
@@ -1297,7 +1365,11 @@ window.craftReceive = (msg) => {
         msg.path,
         ...doc.recent.filter((p) => p !== msg.path),
       ].slice(0, 12);
-      if (!doc.root) doc.root = msg.path.replace(/[\\/][^\\/]+$/, "");
+      if (doc.root !== msg.root || !msg.automatic) {
+        setTreeRoot(msg.root);
+        drawTree();
+        if (prefs.side === "files" && doc.root) post("children");
+      }
       status();
       if (doc.dirty) {
         post("dirty", { arg: "yes" });
@@ -1318,13 +1390,19 @@ window.craftReceive = (msg) => {
       }
       break;
     case "children":
-      if (doc.root !== msg.root) {
-        treeCache.clear();
-        doc.root = msg.root;
+      if (msg.epoch !== doc.epoch) break;
+      const enteredFromTree = msg.root !== doc.root && $("tree").contains(document.activeElement);
+      setTreeRoot(msg.root);
+      for (const [id, name, target] of [
+        ["folderBack", "后退", msg.back], ["folderForward", "前进", msg.forward], ["folderUp", "上一级", msg.up],
+      ]) {
+        $(id).disabled = !target;
+        $(id).title = target ? name + " · " + target : name;
       }
       treeCache.set(msg.parent, msg.entries);
-      if (prefs.side !== "files") showSidebar("files");
+      if (msg.reveal) showSidebar("files");
       drawTree();
+      if (enteredFromTree) ($("tree").querySelector(".tree-entry") || $("folderBack")).focus({preventScroll:true});
       break;
     case "exportDone":
     case "error":
@@ -1338,7 +1416,7 @@ window.craftReceive = (msg) => {
   }
 };
 document.addEventListener("pointerdown", (e) => {
-  if (menuKey && !e.target.closest("#bar,#menu")) closeMenu();
+  if (menuKey && !e.target.closest("#bar,#menu,#chatExport")) closeMenu();
 });
 document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-command]");
@@ -1350,12 +1428,22 @@ document.addEventListener(
   "keydown",
   (e) => {
     if (e.isComposing || e.keyCode === 229 || $("pop").open) return;
+    if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.target.closest("#files")) {
+      const id = {ArrowLeft:"folderBack", ArrowRight:"folderForward", ArrowUp:"folderUp"}[e.key];
+      if (id) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!$(id).disabled) post(id);
+        return;
+      }
+    }
     if (e.target.closest(".code-toolbar,.language-panel,.image-details")) return;
     if (menuKey && ["ArrowDown", "ArrowUp", "Escape"].includes(e.key)) {
       e.preventDefault();
       if (e.key === "Escape") {
+        const trigger = menuKey === "chatExports" ? $("chatExport") : null;
         closeMenu();
-        writer.focus();
+        if (trigger) trigger.focus(); else writer.focus();
         return;
       }
       const bs = [...$("menu").querySelectorAll("button")],
@@ -1427,5 +1515,6 @@ document.addEventListener(
 );
 /* PREFERENCES */
 /* WORD_STUDIO */
+/* CHAT_EXPLORER */
 writer = MarkWriter.createWriter($("write"), change, cursor, act, closeMenu, notice);
 post("ready");

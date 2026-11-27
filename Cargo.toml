@@ -1,6 +1,6 @@
 [package]
 name = "markcraft"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2024"
 license = "MIT"
 description = "A local-first Markdown writing desk for Windows"
@@ -24,6 +24,8 @@ url = "2"
 sha2 = "0.10"
 base64 = "0.22"
 percent-encoding = "2"
+ruzstd = "0.8"
+time = { version = "0.3", features = ["formatting", "parsing"] }
 
 windows = { version = "0.61", features = ["Win32_Foundation"] }
 windows-sys = { version = "0.61", features = ["Win32_UI_WindowsAndMessaging","Win32_Storage_FileSystem"] }

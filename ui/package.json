@@ -1,6 +1,6 @@
 {
   "name": "markcraft-editor",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "scripts": {
     "build": "esbuild writer.js --bundle --minify --global-name=MarkWriter --format=iife --legal-comments=linked --outfile=../vendor/writer.bundle.js"
   },

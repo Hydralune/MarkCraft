@@ -13,6 +13,7 @@ pub enum Next {
     New,
     Guide,
     Open(PathBuf),
+    TreeFile(PathBuf),
     Linked(PathBuf, u64),
     Import(String),
 }
@@ -49,6 +50,11 @@ impl App {
             Next::Stay => {}
             Next::Close => return Ok(true),
             Next::Open(path) => self.open(path, win, web)?,
+            Next::TreeFile(path) => {
+                let loaded = Document::read(path.clone())?;
+                self.workspace = self.browse_root().map(Path::to_path_buf);
+                self.open_loaded(loaded, path, win, web);
+            }
             Next::Linked(path, line) => {
                 self.open(path, win, web)?;
                 if line > 0 {
@@ -283,7 +289,7 @@ impl App {
         self.titlebar(win);
         send(
             web,
-            json!({"kind":"saved","title":self.title(),"path":path,"text":text,"draft":self.is_draft(),"automatic":automatic,"epoch":self.epoch}),
+            json!({"kind":"saved","title":self.title(),"path":path,"root":self.browse_root(),"text":text,"draft":self.is_draft(),"automatic":automatic,"epoch":self.epoch}),
         );
         if let Some(path) = displaced {
             send(

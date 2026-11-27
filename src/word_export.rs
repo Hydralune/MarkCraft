@@ -148,7 +148,7 @@ impl Studio {
         id: u64,
         epoch: u64,
         text: String,
-        folder: Option<PathBuf>,
+        input: extras::ConversionInput,
         send: impl Fn(Value) + Send + 'static,
     ) -> io::Result<Self> {
         let dir = Arc::new(tempfile::tempdir()?);
@@ -188,7 +188,7 @@ impl Studio {
                         } else {
                             None
                         };
-                        let warnings = extras::convert(&text, folder.as_deref(), "docx", &base, reference.as_deref())
+                        let warnings = extras::convert(&text, &input, "docx", &base, reference.as_deref())
                             .map_err(|err| if err.kind()==io::ErrorKind::NotFound {io::Error::other("未找到 Pandoc。请安装 Pandoc，或将其放入程序旁的 tools/pandoc 文件夹。")} else {err})?;
                         e.insert(warnings);
                     }

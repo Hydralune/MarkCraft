@@ -119,7 +119,7 @@ window.highlightCode = (text, language = "") => {
     ? shellColors(result.value, text)
     : result.value;
 };
-async function typeset(root, theme) {
+async function typeset(root, theme, diagrams = true) {
   for (const code of root.querySelectorAll("pre code")) {
     const lang =
       Array.from(code.classList)
@@ -128,7 +128,7 @@ async function typeset(root, theme) {
     const html = window.highlightCode(code.textContent, lang);
     if (html) code.innerHTML = html;
   }
-  if (!root.querySelector("pre code.language-mermaid")) return;
+  if (!diagrams || !root.querySelector("pre code.language-mermaid")) return;
   await loadLibrary("mermaid");
   if (!window.mermaid) return;
   const diagramTheme =

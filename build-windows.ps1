@@ -13,6 +13,7 @@ if (Test-Path -LiteralPath $cargo) {
 }
 Push-Location $PSScriptRoot
 try {
+    $profile = 'release'
     & $cargo build --release --locked
     if ($LASTEXITCODE -ne 0) { throw 'Rust 构建失败。' }
     $compiler = if ($env:RUSTC) { $env:RUSTC } else { 'rustc' }
@@ -20,7 +21,7 @@ try {
     $triple = $hostLine.ToString().Substring(6).Trim()
     $metadata = & $cargo metadata --locked --format-version 1 --filter-platform $triple | ConvertFrom-Json
     if ($LASTEXITCODE -ne 0) { throw '读取 Cargo 构建信息失败。' }
-    $output = Join-Path $metadata.target_directory 'release'
+    $output = Join-Path $metadata.target_directory $profile
     if ($triple -eq 'x86_64-pc-windows-gnu') {
         $sdk = $metadata.packages | Where-Object name -eq 'webview2-com-sys' | Select-Object -First 1
         $loader = Join-Path (Split-Path $sdk.manifest_path -Parent) 'x64\WebView2Loader.dll'
@@ -33,6 +34,7 @@ try {
         [IO.File]::Copy($binary, $stagedBinary)
         & (Join-Path $PSScriptRoot 'embed-icon.ps1') -Executable $stagedBinary -IconFile (Join-Path $PSScriptRoot 'ui\MarkCraft.ico')
         & (Join-Path $PSScriptRoot 'embed-icon.ps1') -Executable $stagedBinary -IconFile (Join-Path $PSScriptRoot 'ui\markdown-document.ico') -Group 2
+
         Move-Item -LiteralPath $stagedBinary -Destination $binary -Force
     } finally {
         if ([IO.File]::Exists($stagedBinary)) { [IO.File]::Delete($stagedBinary) }

@@ -1,6 +1,8 @@
 #![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
 
 mod assets;
+
+mod chat;
 mod disk_watch;
 mod extras;
 mod file_window;
@@ -14,7 +16,7 @@ use saving::{Next, Pending, Save};
 
 use rfd::{FileDialog, MessageDialog, MessageLevel};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{Value, json};
 use std::{
     borrow::Cow,
     cell::RefCell,
@@ -46,6 +48,14 @@ enum Input {
 #[derive(Deserialize)]
 struct Request {
     action: String,
+
+    #[serde(default)]
+    recipient: chat::Recipient,
+    #[serde(default, rename = "chatTitle")]
+    chat_title: Option<String>,
+
+    #[serde(default, rename = "forkId")]
+    fork_id: Option<String>,
     #[serde(default)]
     text: String,
     #[serde(default)]
@@ -75,6 +85,8 @@ fn image_dialog(win: &Window) -> FileDialog {
 }
 #[derive(Default)]
 struct App {
+
+    chats: Option<std::sync::mpsc::Sender<chat::Job>>,
     doc: Document,
     watch: disk_watch::Watch,
     data: PathBuf,
@@ -89,12 +101,58 @@ struct App {
     question_id: u64,
     epoch: u64,
     workspace: Option<PathBuf>,
+    folder_back: Vec<PathBuf>,
+    folder_forward: Vec<PathBuf>,
     proxy: Option<tao::event_loop::EventLoopProxy<Input>>,
     exporting: bool,
     word_studio: Option<word_export::Studio>,
     search_serial: std::sync::Arc<std::sync::atomic::AtomicU64>,
 }
 impl App {
+    fn browse_root(&self) -> Option<&Path> {
+        self.workspace.as_deref().or_else(|| self.doc.path.as_deref().and_then(Path::parent))
+    }
+    fn history_target(history: &mut Vec<PathBuf>) -> Option<PathBuf> {
+        while let Some(path) = history.last() {
+            match fs::metadata(path) {
+                Ok(info) if !info.is_dir() => {}
+                Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+                _ => return Some(path.clone()),
+            }
+            history.pop();
+        }
+        None
+    }
+    fn show_folder(&mut self, path: PathBuf, action: &str, web: &WebView) -> io::Result<()> {
+        let mut listing = extras::children(&path, &path)?;
+        if let Some(previous) = self.browse_root().filter(|p| *p != path).map(Path::to_path_buf) {
+            match action {
+                "folderBack" => {
+                    self.folder_back.pop();
+                    self.folder_forward.push(previous);
+                }
+                "folderForward" => {
+                    self.folder_forward.pop();
+                    self.folder_back.push(previous);
+                }
+                _ => {
+                    self.folder_back.push(previous);
+                    self.folder_forward.clear();
+                }
+            }
+        }
+        self.workspace = Some(path);
+        listing["reveal"] = json!(action == "folder");
+        self.send_tree(listing, web);
+        Ok(())
+    }
+    fn send_tree(&self, mut listing: Value, web: &WebView) {
+        listing["back"] = json!(self.folder_back.last());
+        listing["forward"] = json!(self.folder_forward.last());
+        listing["up"] = json!(self.browse_root().and_then(Path::parent));
+        listing["epoch"] = json!(self.epoch);
+        send(web, listing);
+    }
     fn title(&self) -> String {
         self.doc
             .path
@@ -114,7 +172,7 @@ impl App {
         win.set_title(&format!(
             "{}{} — MarkCraft",
             if self.dirty { "● " } else { "" },
-            self.title()
+            self.title(),
         ));
     }
     fn document(&mut self, win: &Window, web: &WebView) {
@@ -140,20 +198,28 @@ impl App {
         send(
             web,
             json!({"kind":"document","epoch":self.epoch,"draft":self.is_draft(), "title":self.title(), "path":self.doc.path, "text":self.doc.original,
-                         "blocks":markdown::blocks(&self.doc.original),"guide":self.guide,"recent":Recent::load(&self.data).paths,"root":self.workspace.as_ref().or_else(||self.doc.path.as_ref()).map(|p|if p.is_dir(){p.to_owned()}else{p.parent().unwrap_or(p).to_owned()})}),
+                         "blocks":markdown::blocks(&self.doc.original),"guide":self.guide,"recent":Recent::load(&self.data).paths,"root":self.browse_root()}),
         );
     }
     fn open(&mut self, path: PathBuf, win: &Window, web: &WebView) -> io::Result<()> {
         let loaded = Document::read(path.clone())?;
+        self.open_loaded(loaded, path, win, web);
+        Ok(())
+    }
+    fn open_loaded(&mut self, loaded: Document, path: PathBuf, win: &Window, web: &WebView) {
         self.doc = loaded;
         self.guide = false;
         Recent::touch(&self.data, &path);
         self.document(win, web);
-        Ok(())
     }
     fn handle(&mut self, request: Request, win: &Window, web: &WebView) -> io::Result<bool> {
         let Request {
             action,
+
+            recipient,
+            chat_title,
+
+            fork_id,
             text,
             arg,
             rev,
@@ -166,7 +232,7 @@ impl App {
         if self.pending.is_some()
             && !matches!(
                 action.as_str(),
-                "answer" | "render" | "dirty" | "windowTheme"
+                "answer" | "render" | "dirty" | "windowTheme" | "chatIndex" | "chatRead"
             )
         {
             return Ok(false);
@@ -190,6 +256,50 @@ impl App {
             return Ok(false);
         }
         match action.as_str() {
+
+            "chatPluginPackage" => {
+                let package = std::env::current_exe()?.with_file_name("markcraft-handoff-0.3.0.tgz");
+                if package.is_file() {
+                    std::process::Command::new("explorer.exe").arg(format!("/select,{}", package.display())).spawn()?;
+                } else {
+                    send(web, json!({"kind":"notice","message":"请把发行包中的 markcraft-handoff-0.3.0.tgz 放在程序旁。"}));
+                }
+            }
+
+            "chatOpenCodex" => {
+                let valid=arg.len()==36 && arg.bytes().enumerate().all(|(i,b)|if matches!(i,8|13|18|23){b==b'-'}else{b.is_ascii_hexdigit()});
+                if valid { open::that(format!("codex://threads/{arg}"))?; }
+            }
+
+            "chatOpenAntigravity" => {
+                let exe = chat::desktop_exe();
+                if let Some(exe) = exe { std::process::Command::new(exe).spawn()?; }
+                else { send(web, json!({"kind":"notice","message":"请从开始菜单打开已安装的 Antigravity 桌面端。"})); }
+            }
+
+            "chatFolder" => {
+                let folder = FileDialog::new().set_parent(win).set_title("选择智能体的记录根目录").pick_folder();
+                send(web,json!({"kind":"chatFolder","id":arg,"rev":rev,"epoch":epoch,"folder":folder}));
+            }
+            "chatSetup" | "chatConfigure" | "chatInstallPlugin" | "chatIndex" | "chatRead" | "chatHandoff" | "chatRename" => {
+                let text = if action == "chatInstallPlugin" && text == "@pick" {
+                    let Some(exe)=FileDialog::new().set_parent(win).add_filter("DeepSeek Harness", &["exe"]).pick_file() else {
+                        send(web,json!({"kind":action,"cancelled":true,"epoch":epoch,"rev":rev}));return Ok(false);
+                    };exe.to_string_lossy().into_owned()
+                } else if action == "chatHandoff" && text == "@pick" {
+                    let Some(path) = FileDialog::new().set_parent(win).set_title("选择接续任务的工作目录").pick_folder() else {
+                        send(web, json!({"kind":"chatHandoff", "rev":rev, "epoch":epoch, "cancelled":true}));
+                        return Ok(false);
+                    };
+                    format!("@folder:{}", path.display())
+                } else {
+                    text
+                };
+                if let Some(proxy) = self.proxy.clone() {
+                    let worker = self.chats.get_or_insert_with(|| chat::worker(proxy, self.data.clone()));
+                    let _ = worker.send(chat::Job { action, recipient, id: arg, query: text, name:chat_title, fork:fork_id, rev, epoch });
+                }
+            }
             "ready" => {
                 self.ready = true;
                 send(web, extras::themes(&self.data, None)?);
@@ -246,11 +356,7 @@ impl App {
                         .into_iter()
                         .find(|p| p == Path::new(&arg)),
                     "workspaceFile" => {
-                        let folder = self
-                            .workspace
-                            .as_deref()
-                            .or_else(|| self.doc.path.as_deref().and_then(Path::parent));
-                        if let Some(root) = folder {
+                        if let Some(root) = self.browse_root() {
                             extras::in_folder(root, Path::new(&arg))?;
                             Some(PathBuf::from(&arg))
                         } else {
@@ -264,7 +370,8 @@ impl App {
                         send(web, json!({"kind":"activatedFile"}));
                         return Ok(false);
                     }
-                    return self.leave(Next::Open(path), &text, automatic, win, web);
+                    let next = if action == "workspaceFile" { Next::TreeFile(path) } else { Next::Open(path) };
+                    return self.leave(next, &text, automatic, win, web);
                 }
             }
             "close" | "new" | "guide" => {
@@ -312,9 +419,29 @@ impl App {
                 });
             }
             "folder" => {
-                if let Some(folder) = FileDialog::new().set_parent(win).pick_folder() {
-                    self.workspace = Some(folder.clone());
-                    send(web, extras::children(&folder, &folder)?);
+                let mut picker = FileDialog::new().set_parent(win);
+                if let Some(root) = self.browse_root() {
+                    picker = picker.set_directory(root);
+                }
+                if let Some(folder) = picker.pick_folder() {
+                    self.show_folder(folder, &action, web)?;
+                }
+            }
+            "folderUp" | "folderBack" | "folderForward" | "folderEnter" => {
+                let target = match action.as_str() {
+                    "folderBack" => Self::history_target(&mut self.folder_back),
+                    "folderForward" => Self::history_target(&mut self.folder_forward),
+                    "folderUp" => self.browse_root().and_then(Path::parent).map(Path::to_path_buf),
+                    _ => {
+                        let Some(root) = self.browse_root() else { return Ok(false) };
+                        extras::in_folder(root, Path::new(&arg))?;
+                        Some(PathBuf::from(arg))
+                    }
+                };
+                if let Some(path) = target {
+                    self.show_folder(path, &action, web)?;
+                } else if let Some(root) = self.browse_root() {
+                    self.send_tree(extras::children(root, root)?, web);
                 }
             }
             "cancelSearch" => {
@@ -325,13 +452,7 @@ impl App {
                 use std::sync::atomic::Ordering;
                 let serial = self.search_serial.clone();
                 let ticket = serial.fetch_add(1, Ordering::Relaxed) + 1;
-                let root = self.workspace.clone().or_else(|| {
-                    self.doc
-                        .path
-                        .as_deref()
-                        .and_then(Path::parent)
-                        .map(Path::to_path_buf)
-                });
+                let root = self.browse_root().map(Path::to_path_buf);
                 let proxy = self.proxy.as_ref().unwrap().clone();
                 std::thread::spawn(move || {
                     let (hits, limited) = root
@@ -352,17 +473,13 @@ impl App {
                 });
             }
             "children" => {
-                if let Some(root) = self
-                    .workspace
-                    .as_deref()
-                    .or_else(|| self.doc.path.as_deref().and_then(Path::parent))
-                {
+                if let Some(root) = self.browse_root() {
                     let folder = if arg.is_empty() {
                         root
                     } else {
                         Path::new(&arg)
                     };
-                    send(web, extras::children(root, folder)?);
+                    self.send_tree(extras::children(root, folder)?, web);
                 }
             }
             "collectImages" => {
@@ -488,7 +605,7 @@ impl App {
             }
             "wordBegin" => {
                 let proxy = self.proxy.as_ref().unwrap().clone();
-                let blocks = markdown::blocks(&text)
+                let blocks = if chat_title.is_some() { Vec::new() } else { markdown::blocks(&text) }
                     .into_iter()
                     .take(48)
                     .collect::<Vec<_>>();
@@ -496,11 +613,9 @@ impl App {
                     rev,
                     epoch,
                     text,
-                    self.doc
-                        .path
-                        .as_deref()
-                        .and_then(Path::parent)
-                        .map(Path::to_owned),
+                    if let Some(title) = chat_title { extras::ConversionInput::TranscriptHtml(title) } else {
+                        extras::ConversionInput::Markdown(self.doc.path.as_deref().and_then(Path::parent).map(Path::to_owned))
+                    },
                     move |msg| {
                         let _ = proxy.send_event(Input::Reply(msg));
                     },
@@ -537,7 +652,7 @@ impl App {
             }
             "wordSave" => {
                 if let Some(studio) = &self.word_studio {
-                    let Some(path) = extras::output(win, self.doc.path.as_deref(), "docx") else {
+                    let Some(path) = extras::output(win, self.doc.path.as_deref(), "docx", chat_title.as_deref()) else {
                         send(
                             web,
                             json!({"kind":"wordSaved","studio":studio.id,"cancelled":true}),
@@ -564,17 +679,18 @@ impl App {
                     send(web, msg);
                 }
             }
-            "exportPdf" | "exportHtml" | "epub" | "odt" | "rtf" | "latex" => {
+            "exportMarkdown" | "exportPdf" | "exportHtml" | "epub" | "odt" | "rtf" | "latex" => {
                 if self.exporting {
                     return Ok(false);
                 }
                 let ext = match action.as_str() {
                     "exportPdf" => "pdf",
                     "exportHtml" => "html",
+                    "exportMarkdown" => "md",
                     "latex" => "tex",
                     other => other,
                 };
-                let Some(path) = extras::output(win, self.doc.path.as_deref(), ext) else {
+                let Some(path) = extras::output(win, self.doc.path.as_deref(), ext, chat_title.as_deref()) else {
                     send(web, json!({"kind":"exportDone","message":""}));
                     return Ok(false);
                 };
@@ -592,8 +708,9 @@ impl App {
                             .send_event(Input::Exported(result.map(|path| (path, String::new()))));
                     })?;
                     self.exporting = true;
-                } else if action == "exportHtml" {
-                    storage::atomic_write(&path, arg.as_bytes())?;
+                } else if action == "exportHtml" || action == "exportMarkdown" {
+                    let content = if action == "exportMarkdown" { &text } else { &arg };
+                    storage::atomic_write(&path, content.as_bytes())?;
                     send(
                         web,
                         json!({"kind":"exportDone","message":format!("已导出 {}",path.display())}),
@@ -607,7 +724,8 @@ impl App {
                         .and_then(Path::parent)
                         .map(Path::to_path_buf);
                     std::thread::spawn(move || {
-                        let result = extras::convert(&text, dir.as_deref(), &action, &path, None)
+                        let input = if let Some(title) = chat_title { extras::ConversionInput::TranscriptHtml(title) } else { extras::ConversionInput::Markdown(dir) };
+                        let result = extras::convert(&text, &input, &action, &path, None)
                             .map(|warnings| (path.display().to_string(), warnings))
                             .map_err(|e| e.to_string());
                         let _ = proxy.send_event(Input::Exported(result));
@@ -687,6 +805,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         .replace("/* PREFERENCES */", include_str!("../ui/preferences.js"))
         .replace("/* WORD_STUDIO */", include_str!("../ui/word-studio.js"))
         .replace("/* WORD_STYLE */", include_str!("../ui/word-studio.css"));
+
+    let html = html
+        .replace("/* CHAT_EXPLORER */", include_str!("../ui/chat.js"))
+        .replace("/* CHAT_STYLE */", include_str!("../ui/chat.css"));
     let web = WebViewBuilder::new_with_web_context(&mut context)
         .with_url("craftui://localhost/index.html")
         .with_browser_accelerator_keys(false)
@@ -705,11 +827,19 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                 "/writer.js" => Some(include_bytes!("../vendor/writer.bundle.js")),
                 "/highlight.js" => Some(include_bytes!("../vendor/highlight.min.js")),
                 "/mermaid.js" => Some(include_bytes!("../vendor/mermaid.min.js")),
+
+                "/brands/codex.png" => Some(include_bytes!("../ui/brands/codex.png")),
+
+                "/brands/antigravity.png" => Some(include_bytes!("../ui/brands/antigravity.png")),
+
+                "/brands/claude.png" => Some(include_bytes!("../ui/brands/claude.png")),
+
+                "/brands/deepseek.png" => Some(include_bytes!("../ui/brands/deepseek.png")),
                 _ => None,
             };
             wry::http::Response::builder()
                 .status(if asset.is_some() { 200 } else { 404 })
-                .header("Content-Type", "application/javascript; charset=utf-8")
+                .header("Content-Type", if req.uri().path().ends_with(".png") { "image/png" } else { "application/javascript; charset=utf-8" })
                 .header("Access-Control-Allow-Origin", "*")
                 .body(Cow::Borrowed(asset.unwrap_or_default()))
                 .unwrap()
