@@ -28,6 +28,7 @@ window.chatExplorer = (() => {
   const absoluteFolder=p=>/^(?:[a-z]:[\\/]|\\\\|\/)/i.test(p||"");
   let serial=0, indexTicket=0, readTicket=0, generation=0, total=0, first=0, timer=0, reading=false, scanning=false, wanted="", synced="";
   let readKind="", drawnMode="";
+  let pendingExport=null;
   let snapshot=null, lastSide="chats", chatFilter="", fileFilter="";
   let outlineTicket=0, outlineKey="", outlineRows=[], outlineError="", outlineLoading=false;
   const outlineParents=new Map();
@@ -129,15 +130,7 @@ window.chatExplorer = (() => {
   const pane=el("section","chat-pane"); pane.id="chatPane"; pane.hidden=true; pane.setAttribute("aria-label","对话阅读区");
   $("desk").after(pane);
   const appTitle=el("strong","chat-app-title","对话资料库");
-  const exportMenu=button("chat-export","",()=>{
-    if(menuKey==="chatExports"){closeMenu();return;}
-    menu("chatExports",exportMenu,true);
-    exportMenu.setAttribute("aria-expanded","true");
-  });
-  exportMenu.id="chatExport";exportMenu.title="导出对话";exportMenu.setAttribute("aria-haspopup","menu");
-  exportMenu.setAttribute("aria-expanded","false");exportMenu.append(toolIcon("export"),el("span","","导出"),toolIcon("chevron","chat-down"));
-  menus.chatExports=()=>[item("Markdown 文稿 (.md)…","exportMarkdown","Ctrl S"),item("PDF 文档…","exportPdf"),item("Word 文档…","docx"),sep,...menus.exports()];
-  document.querySelector(".toolbar").append(appTitle,exportMenu);
+  document.querySelector(".toolbar").append(appTitle);
   const head=el("div","chat-read-head"), titleBox=el("div","chat-heading"), title=el("h2"), subtitle=el("div","chat-subtitle");
   const picker=button("chat-picker","‹ 对话列表",()=>{
     if(!prefs.side)sidebar(lastSide);
@@ -564,6 +557,8 @@ window.chatExplorer = (() => {
     });
   }
   function home(){
+    pendingExport=null;
+    $("exportMenuButton").disabled=visible;
     transfer.hidden=true;raw.replaceChildren();
     snapshot=null;resetOutline();newer.hidden=true;document.body.classList.remove("chat-document");
     selected="";readTicket=++serial;reading=false;generation=0;total=0;
@@ -583,14 +578,14 @@ window.chatExplorer = (() => {
     const src=sourceOf(item);title.textContent=mode==="markdown"?leaf(item.project):item.title;title.title=item.title;
     subtitle.textContent=src.name+(mode==="markdown"?"":" · "+leaf(item.project))+(total?" · "+total+" 条消息":"");subtitle.title=item.project;
     controls.hidden=false;copy.hidden=mode!=="markdown";copy.disabled=!snapshot;
-    exportMenu.disabled=!snapshot;
+    $("exportMenuButton").disabled=visible && !!pendingExport;
     document.body.classList.toggle("chat-document",visible && mode==="markdown" && !!snapshot);
     dialogBtn.setAttribute("aria-pressed",String(mode==="dialog"));mdBtn.setAttribute("aria-pressed",String(mode==="markdown"));
   }
   function openChat(item){
     const changed=selected!==item.id;
     selected=item.id;expanded.add(item.source);expanded.add(JSON.stringify([item.source,item.project]));
-    if(changed){resetOutline();newer.hidden=true;snapshot=null;generation=0;total=0;first=0;synced="";drawnMode="";positions.dialog=positions.markdown=0;transcript.replaceChildren();raw.textContent="";older.hidden=true;}
+    if(changed){pendingExport=null;resetOutline();newer.hidden=true;snapshot=null;generation=0;total=0;first=0;synced="";drawnMode="";positions.dialog=positions.markdown=0;transcript.replaceChildren();raw.textContent="";older.hidden=true;}
     drawTree();document.body.classList.add("chat-picked");updateHeading(item);
     requestOutline();drawOutline();load({});
   }
@@ -638,6 +633,16 @@ window.chatExplorer = (() => {
       notice("已更新资料库名称");return true;
     }
     if(m.kind==="chatRead"){
+      if(pendingExport && m.rev===pendingExport.rev){
+        const {id,format}=pendingExport;
+        pendingExport=null;
+        if(visible && selected===id && active()){
+          $("exportMenuButton").disabled=false;
+          if(m.error)notice(m.error);
+          else if(m.id===id)exportDoc(format,{title:active().title,text:m.markdown,sections:m.sections});
+        }
+        return true;
+      }
       const picker=$("pop").open && $("pop").querySelector(".chat-handoff-target[data-lookup]");
       if(picker && picker.dataset.lookup===String(m.rev)){picker.showWorkspace(m.workspace);return true;}
     }
@@ -782,23 +787,30 @@ window.chatExplorer = (() => {
     if(!on){handoffTicket=0;transfer.disabled=false;}
     visible=on;pane.hidden=!on;$("desk").hidden=on;document.body.classList.toggle("chat-reading",on);
     clearInterval(timer);
+    closeMenu();
     if(on){
-      closeMenu();scanning=false;reading=false;
+      scanning=false;reading=false;
       if(!active())home();else{updateHeading(active());load({});requestOutline();}
       scan();timer=setInterval(()=>{if(!document.hidden)scan();},3000);
       (showLibrary?tab:$("outlineTab")).focus({preventScroll:true});
     }else{
+      pendingExport=null;$("exportMenuButton").disabled=false;
       document.body.classList.remove("chat-picked","chat-document");
       indexTicket=++serial;readTicket=++serial;outlineTicket=++serial;outlineKey="";pendingAnchor="";
     }
   }
   window.addEventListener("focus",scan);document.addEventListener("visibilitychange",()=>{if(!document.hidden)scan();});
   function command(cmd) {
-    if(!visible || !selected || mode!=="markdown")return false;
+    if(!visible || !active())return false;
     const format=cmd==="save" || cmd==="saveAs" ? "exportMarkdown" : cmd;
     if(!["exportMarkdown","exportPdf","docx","print","exportHtml","epub","odt","rtf","latex"].includes(format))return false;
     closeMenu();
-    if(snapshot)exportDoc(format,snapshot);else notice("正在读取完整对话…");
+    if(pendingExport || exporting)return true;
+    // The dialog renders one page at a time. Export from the full conversation.
+    const rev=++serial;
+    pendingExport={id:selected,format,rev};
+    $("exportMenuButton").disabled=true;
+    post("chatRead",{arg:selected,rev,text:JSON.stringify({format:"markdown"})});
     return true;
   }
   return {receive,switchSide,command,drawOutline,openSetup,

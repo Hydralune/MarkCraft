@@ -162,7 +162,13 @@ input:focus-visible {
   height: 15px;
   color: var(--ui-accent);
 }
-.export-button:hover {
+.export-button .export-chevron {
+  width: 11px;
+  height: 11px;
+  transform: rotate(90deg);
+}
+.export-button:hover:enabled,
+.export-button[aria-expanded="true"] {
   border-color: var(--ui-accent);
   background: var(--selected);
 }
@@ -1133,12 +1139,8 @@ body.exporting #bar {
   }
 }
 @media (max-width: 550px) {
-  .export-button span {
+  .export-button .export-chevron {
     display: none;
-  }
-  .export-button {
-    width: 29px;
-    padding: 0;
   }
   #bar button {
     padding-inline: 6px;

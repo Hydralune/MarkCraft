@@ -500,7 +500,7 @@ function drawTree() {
   refocus?.focus({preventScroll:true});
 }
 function closeMenu() {
-  $("chatExport")?.setAttribute("aria-expanded","false");
+  $("exportMenuButton").setAttribute("aria-expanded", "false");
   menuKey = "";
   $("menu").hidden = true;
   $("bar")
@@ -521,9 +521,7 @@ const fileItems = () => [
   item("自动保存", "autoSave"),
   item("草稿箱…", "drafts"),
   sep,
-  item("导出 PDF…", "exportPdf", "Ctrl Shift E"),
-  item("导出 Word…", "docx"),
-  item("更多导出格式", "exports", "›"),
+  item("导出", "exports", "›"),
   item("导入文档…", "import"),
   item("打印…", "print", "Ctrl Alt P"),
   sep,
@@ -607,6 +605,10 @@ const menus = {
     item("重新载入主题", "themes"),
   ],
   exports: () => [
+    ...(window.chatExplorer?.isReading ? [item("Markdown 文稿 (.md)…", "exportMarkdown", "Ctrl S")] : []),
+    item("PDF 文档…", "exportPdf", "Ctrl Shift E"),
+    item("Word 文档…", "docx"),
+    sep,
     item("HTML 网页…", "exportHtml"),
     item("EPUB 电子书…", "epub"),
     item("OpenDocument 文档…", "odt"),
@@ -649,8 +651,20 @@ function menu(key, anchor, focus = false) {
   $("bar")
     .querySelectorAll("button")
     .forEach((e) => e.setAttribute("aria-expanded", String(e === b)));
+  $("exportMenuButton").setAttribute("aria-expanded", String(b === $("exportMenuButton")));
   if (focus) dest.querySelector("button")?.focus();
 }
+const exportMenuButton = $("exportMenuButton");
+exportMenuButton.onclick = () => {
+  if (exportMenuButton.getAttribute("aria-expanded") === "true") closeMenu();
+  else menu("exports", exportMenuButton, true);
+};
+exportMenuButton.onkeydown = (event) => {
+  if (event.key === "ArrowDown") {
+    event.preventDefault();
+    menu("exports", exportMenuButton, true);
+  }
+};
 for (const name of ["文件", "编辑", "段落", "格式", "视图", "主题"]) {
   const b = node("button", name);
   b.setAttribute("aria-haspopup", "menu");
@@ -1416,7 +1430,7 @@ window.craftReceive = (msg) => {
   }
 };
 document.addEventListener("pointerdown", (e) => {
-  if (menuKey && !e.target.closest("#bar,#menu,#chatExport")) closeMenu();
+  if (menuKey && !e.target.closest("#bar,#menu,#exportMenuButton")) closeMenu();
 });
 document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-command]");
@@ -1441,7 +1455,7 @@ document.addEventListener(
     if (menuKey && ["ArrowDown", "ArrowUp", "Escape"].includes(e.key)) {
       e.preventDefault();
       if (e.key === "Escape") {
-        const trigger = menuKey === "chatExports" ? $("chatExport") : null;
+        const trigger = exportMenuButton.getAttribute("aria-expanded") === "true" ? exportMenuButton : null;
         closeMenu();
         if (trigger) trigger.focus(); else writer.focus();
         return;

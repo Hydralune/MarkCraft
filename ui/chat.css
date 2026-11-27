@@ -1,5 +1,5 @@
-.chat-app-title,.chat-export {display:none}
-.chat-reading .toolbar #bar,.chat-reading .toolbar .tool-rule,.chat-reading .toolbar .export-button,
+.chat-app-title {display:none}
+.chat-reading .toolbar #bar,.chat-reading .toolbar .tool-rule,
 .chat-reading .toolbar [data-command="find"],.chat-reading footer { display:none }
 .chat-reading .toolbar {gap:10px}
 .chat-reading .chat-app-title {display:block; order:1; font-size:14px;letter-spacing:.02em}
@@ -79,12 +79,7 @@
 .chat-reading #side {width:min(38%,clamp(245px,29vw,350px))}
 @media(max-width:640px){.chat-reading #side {width:100%}}
 .chat-reading .chat-app-title {font-weight:620;letter-spacing:0}
-.chat-document .toolbar .export-button,.chat-document .toolbar .chat-export {
-  display:inline-flex;align-items:center;justify-content:center;gap:6px;order:4;
-}
-.chat-document .toolbar .chat-export {order:3;background:var(--ui-accent);color:var(--surface);border-radius:7px;padding:5px 10px;height:29px}
-.chat-export .ui-icon {width:15px;height:15px}
-.chat-export .chat-down {width:10px;height:10px;transform:rotate(90deg)}
+.chat-reading .toolbar .export-button {order:3}
 .chat-clipboard {position:fixed;left:-10000px;top:0}
 .chat-nav {scrollbar-width:none;padding:1px 2px 20px}
 .chat-nav-head {border-bottom:1px solid var(--edge);margin:3px 3px 10px;padding:0 0 8px}
@@ -121,13 +116,12 @@
 .chat-markdown a:not([href]) {color:inherit;text-decoration:none}
 .chat-recent:hover {background:color-mix(in srgb,var(--selected) 55%,var(--surface))}
 @media(max-width:760px){
-  .chat-document .toolbar .export-button {display:none}
   .chat-read-head {flex-wrap:wrap;gap:7px 10px}
   .chat-heading {flex-basis:50%}
   .chat-copy-all {font-size:11px}
 }
 @media(max-width:640px){
-  .chat-reading:not(.chat-picked) .toolbar .chat-export {display:none}
+  .chat-reading:not(.chat-picked) .toolbar .export-button {display:none}
 }
 @media(prefers-reduced-motion:reduce){
   .chat-fold,.chat-branch .chat-chevron {transition:none}

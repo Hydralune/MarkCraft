@@ -131,17 +131,11 @@
       >
         <svg class="ui-icon" aria-hidden="true"><use href="#i-search" /></svg>
       </button>
-      <button
-        class="export-button"
-        data-command="exportPdf"
-        title="导出 PDF (Ctrl + Shift + E)"
-        aria-label="导出 PDF"
-      >
-        <svg class="ui-icon" aria-hidden="true"><use href="#i-export" /></svg
-        ><span>导出 PDF</span>
-      </button>
-      <button class="export-button" data-command="docx" title="导出 Word" aria-label="导出 Word">
-        <svg class="ui-icon" aria-hidden="true"><use href="#i-paper" /></svg><span>导出 Word</span>
+      <button type="button" id="exportMenuButton" class="export-button"
+        title="导出" aria-haspopup="menu" aria-controls="menu" aria-expanded="false">
+        <svg class="ui-icon" aria-hidden="true"><use href="#i-export" /></svg>
+        <span>导出</span>
+        <svg class="ui-icon export-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
       </button>
     </header>
     <div id="layout">
